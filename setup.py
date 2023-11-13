@@ -280,6 +280,20 @@ class CMakeBuild(build_ext):
       )
 
 # -----------------------------
+# Check if the script is run with "python setup.py install"
+# -----------------------------
+
+if 'install' in sys.argv:
+    cmdclass = {
+        "build_ext": CMakeBuild,
+        "install": install
+    }
+else:
+    cmdclass = {
+        "install": install,
+    }
+
+# -----------------------------
 # setup
 # -----------------------------
 def run_setup():
@@ -290,8 +304,7 @@ def run_setup():
     description="bla bla",
     long_description=description(),
     ext_modules=[CMakeExtension("pressiolinalg._linalg")],
-    cmdclass={"build_ext": CMakeBuild,
-              "install"  : install},
+    cmdclass=cmdclass,
     install_requires=["numpy", "scipy", "pyyaml"],
     zip_safe=False,
 
