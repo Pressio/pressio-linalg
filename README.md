@@ -42,3 +42,11 @@ export MPI_BASE_DIR=<full-path-to-your-MPI-installation>
 cd pressio-tools
 python3 setup.py install
 ```
+
+## Testing
+
+Once you have installed the package, run tests with
+```sh
+mpirun -n <np> python -m pytest tests/* --with-mpi
+```
+where, `<np>` is the number of processors you would like to use.

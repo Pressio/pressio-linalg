@@ -17,50 +17,58 @@ def _basic_max_via_python(vec, mpiComm):
     Finds the maximum of a distributed vector.
 
     Args:
-        vec: A distributed vector
-        mpiComm: An MPI communicator
+        vec (np.array): Input row-distributed vector
+        mpiComm (MPI_Comm): MPI communicator
 
     Returns:
         float: The maximum of the vector
     '''
-    rank = mpiComm.Get_rank()
-    size = mpiComm.Get_size()
+    mpi_rank = mpiComm.Get_rank()
+    num_processes = mpiComm.Get_size()
 
-    local_vec = vec[rank::size]
-    local_max = max(local_vec)
+    if num_processes == 1:
+        return max(vec)
 
-    global_max_list = mpiComm.gather(local_max, root=0)
+    local_max = max(vec)
 
-    if rank == 0:
-        global_max_list = [val for val in global_max_list if val is not None]
-        return max(global_max_list) if global_max_list else None
-    else:
-        return None
+    data = mpiComm.gather(local_max.flatten(), root=0)
+
+    global_max = 0
+    if mpi_rank == 0:
+        global_max = max(data)
+
+    global_max = mpiComm.bcast(global_max, root=0)
+
+    return global_max
 
 def _basic_min_via_python(vec, mpiComm):
     '''
-    Finds the minimum of a vector.
+    Finds the minimum of a distributed vector.
 
     Args:
-        vec (np.array): Input vector
+        vec (np.array): Input row-distributed vector
         mpiComm (MPI_Comm): MPI communicator
 
     Returns:
         float: The minimum of the vector
     '''
-    rank = mpiComm.Get_rank()
-    size = mpiComm.Get_size()
+    mpi_rank = mpiComm.Get_rank()
+    num_processes = mpiComm.Get_size()
 
-    local_vec = vec[rank::size]
-    local_min = min(local_vec)
+    if num_processes == 1:
+        return min(vec)
 
-    global_min_list = mpiComm.gather(local_min, root=0)
+    local_min = min(vec)
 
-    if rank == 0:
-        global_min_list = [val for val in global_min_list if val is not None]
-        return min(global_min_list) if global_min_list else None
-    else:
-        return None
+    data = mpiComm.gather(local_min.flatten(), root=0)
+
+    global_min = 0
+    if mpi_rank == 0:
+        global_min = min(data)
+
+    global_min = mpiComm.bcast(global_min, root=0)
+
+    return global_min
 
 def _basic_A_transpose_dot_b_via_python(A, b, comm):
     '''
@@ -77,14 +85,15 @@ def _basic_A_transpose_dot_b_via_python(A, b, comm):
     data = comm.gather(tmp.flatten(), root=0)
 
     ATb_glob = np.zeros(np.size(tmp))
+
     if mpi_rank == 0:
         for j in range(0, num_processes):
             ATb_glob[:] += data[j]
         for j in range(1, num_processes):
             comm.Send(ATb_glob, dest=j)
-
     else:
         comm.Recv(ATb_glob, source=0)
+
     return np.reshape(ATb_glob, np.shape(tmp))
 
 def _basic_svd_method_of_snapshots_via_python(snapshots, comm):
