@@ -305,7 +305,7 @@ def run_setup():
     long_description=description(),
     ext_modules=[CMakeExtension("pressiolinalg._linalg")],
     cmdclass=cmdclass,
-    install_requires=["numpy", "scipy", "pyyaml"],
+    install_requires=["numpy", "scipy", "pyyaml", "pytest-mpi", "mpi4py"],
     zip_safe=False,
 
     python_requires='>=3',
