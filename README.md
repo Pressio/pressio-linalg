@@ -10,11 +10,35 @@ git clone https://github.com/Pressio/pressio-linalg.git
 cd pressio-linalg
 ```
 
-#### Installing in Light Mode
+### Light Mode
 
-To install Pressio-linalg in Light Mode, simply run
+To install Pressio-linalg in Light Mode, ensure you are in the project directory and run
 ```sh
 pip install .
 ```
 
-#### Installing in Heavy Mode
+### Heavy Mode
+
+To install with heavy mode, we envision the following scenarios:
+
+#### a) You already have Trilinos installed somewhere
+
+From the project directory, run
+
+```sh
+export MPI_BASE_DIR=<full-path-to-your-MPI-installation>
+
+python3 setup.py install --trilinos-basedir=<full-path-to-your-trilinos-installation>
+```
+
+#### b) You do NOT have Trilinos and want pressio-linalg to build it
+
+From the project directory, run
+
+```sh
+# set MPI base
+export MPI_BASE_DIR=<full-path-to-your-MPI-installation>
+
+cd pressio-tools
+python3 setup.py install
+```
