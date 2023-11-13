@@ -26,12 +26,16 @@ def _basic_max_via_python(vec, mpiComm):
     rank = mpiComm.Get_rank()
     size = mpiComm.Get_size()
 
-    local_vec = vec[rank::size, :]
+    local_vec = vec[rank::size]
     local_max = max(local_vec)
 
     global_max_list = mpiComm.gather(local_max, root=0)
 
-    return max([global_max in global_max_list])
+    if rank == 0:
+        global_max_list = [val for val in global_max_list if val is not None]
+        return max(global_max_list) if global_max_list else None
+    else:
+        return None
 
 def _basic_min_via_python(vec, mpiComm):
     '''
@@ -47,12 +51,16 @@ def _basic_min_via_python(vec, mpiComm):
     rank = mpiComm.Get_rank()
     size = mpiComm.Get_size()
 
-    local_vec = vec[rank::size, :]
+    local_vec = vec[rank::size]
     local_min = min(local_vec)
 
     global_min_list = mpiComm.gather(local_min, root=0)
 
-    return min([global_min in global_min_list])
+    if rank == 0:
+        global_min_list = [val for val in global_min_list if val is not None]
+        return min(global_min_list) if global_min_list else None
+    else:
+        return None
 
 def A_transpose_dot_bImpl(A, b, comm):
     '''
