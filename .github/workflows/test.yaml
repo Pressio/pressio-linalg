@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # true -> cancel all jobs if any fails
-      # matrix:
-      #   python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-      #   mpi: ['mpich','openmpi']
-      #   exclude:
-      #     - python-version: "3.8"
-      #       mpi: 'mpich'
-      #     - python-version: "3.9"
-      #       mpi: 'mpich'
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        mpi: ['mpich','openmpi']
+        exclude:
+          - python-version: "3.8"
+            mpi: 'mpich'
+          - python-version: "3.9"
+            mpi: 'mpich'
 
     steps:
       - uses: actions/checkout@v3
@@ -30,18 +30,12 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
-          # python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
 
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:
-          mpi: openmpi
-          # mpi: ${{ matrix.mpi }}
-
-      # - name: Install mpi4py
-      #   run: |
-      #     python -m pip install mpi4py
+          mpi: ${{ matrix.mpi }}
 
       - name: Set Environment Variables
         run: |
