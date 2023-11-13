@@ -39,11 +39,11 @@ def _basic_max_via_python(vec, mpiComm):
 
 def _basic_min_via_python(vec, mpiComm):
     '''
-    Finds the minimum of a distributed vector.
+    Finds the minimum of a vector.
 
     Args:
-        vec: A distributed vector
-        mpiComm: An MPI communicator
+        vec (np.array): Input vector
+        mpiComm (MPI_Comm): MPI communicator
 
     Returns:
         float: The minimum of the vector
@@ -62,9 +62,9 @@ def _basic_min_via_python(vec, mpiComm):
     else:
         return None
 
-def A_transpose_dot_bImpl(A, b, comm):
+def _basic_A_transpose_dot_b_via_python(A, b, comm):
     '''
-    Compute A^T B when A's columns are distributed
+    Compute A^T B when A's columns are distributed.
     '''
     mpi_rank = comm.Get_rank()
     num_processes = comm.Get_size()
@@ -87,7 +87,7 @@ def A_transpose_dot_bImpl(A, b, comm):
         comm.Recv(ATb_glob, source=0)
     return np.reshape(ATb_glob, np.shape(tmp))
 
-def svdMethodOfSnapshotsImpl(snapshots, comm):
+def _basic_svd_method_of_snapshots_via_python(snapshots, comm):
     '''Performs SVD via method of snapshots'''
     #
     # outputs:

@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false # true -> cancel all jobs if any fails
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         mpi: ['mpich','openmpi']
         exclude:
           - python-version: "3.8"
