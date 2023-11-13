@@ -2,7 +2,7 @@
 
 ## Installation
 
-Pressio-linalg offers two different modes. "Light mode" has pure Python dependencies and supports some of the basic functions sot hat a user can utilize most of the rom-tools library without headaches. "Heavy mode" is more performant and uses bindings to Trilinos.
+Pressio-linalg offers two different modes. "Light mode" has pure Python dependencies and supports some basic functions so that a user can utilize most of the rom-tools library without headaches. "Heavy mode" is more performant and uses bindings to Trilinos.
 
 Begin by cloning the repository:
 ```sh
