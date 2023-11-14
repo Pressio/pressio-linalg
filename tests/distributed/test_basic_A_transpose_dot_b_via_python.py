@@ -8,7 +8,7 @@ from pressiolinalg.linalg import _basic_A_transpose_dot_b_via_python
 
 
 def distribute_array(global_array, comm):
-    """Distribute an array among processes."""
+    """Distribute an array among all processes."""
     num_processes = comm.Get_size()
 
     n_rows, n_cols = global_array.shape
@@ -21,7 +21,7 @@ def distribute_array(global_array, comm):
     return local_array
 
 def test_basic_A_transpose_dot_b_via_python_gram():
-    # Tests A_transpose dot A
+    '''Tests A^T A where A is row-distributed'''
     comm = MPI.COMM_WORLD
     num_processes = comm.Get_size()
     rank = comm.Get_rank()

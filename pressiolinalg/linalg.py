@@ -9,28 +9,25 @@ import numpy as np
 def _basic_func_via_python(vec):
     print("myfunc purely python")
 
-# def _basic_max_via_python(vec, mpiComm):
-#   print("_basic_max_via_python")
-
-def _basic_max_via_python(vec, mpiComm):
+def _basic_max_via_python(vec, comm):
     '''
     Finds the maximum of a distributed vector.
 
     Args:
         vec (np.array): Local vector
-        mpiComm (MPI_Comm): MPI communicator
+        comm (MPI_Comm): MPI communicator
 
     Returns:
         float: The maximum of the vector
     '''
-    mpi_rank = mpiComm.Get_rank()
-    num_processes = mpiComm.Get_size()
+    mpi_rank = comm.Get_rank()
+    num_processes = comm.Get_size()
 
     if num_processes == 1:
         return max(vec)
 
     local_max = max(vec)
-    data = mpiComm.gather(local_max, root=0)
+    data = comm.gather(local_max, root=0)
 
     global_max = 0
     if mpi_rank == 0:
@@ -38,29 +35,29 @@ def _basic_max_via_python(vec, mpiComm):
     else:
         global_max = None
 
-    global_max = mpiComm.bcast(global_max, root=0)
+    global_max = comm.bcast(global_max, root=0)
 
     return global_max
 
-def _basic_min_via_python(vec, mpiComm):
+def _basic_min_via_python(vec, comm):
     '''
     Finds the minimum of a distributed vector.
 
     Args:
         vec (np.array): Local vector
-        mpiComm (MPI_Comm): MPI communicator
+        comm (MPI_Comm): MPI communicator
 
     Returns:
         float: The minimum of the vector
     '''
-    mpi_rank = mpiComm.Get_rank()
-    num_processes = mpiComm.Get_size()
+    mpi_rank = comm.Get_rank()
+    num_processes = comm.Get_size()
 
     if num_processes == 1:
         return min(vec)
 
     local_min = min(vec)
-    data = mpiComm.gather(local_min, root=0)
+    data = comm.gather(local_min, root=0)
 
     global_min = 0
     if mpi_rank == 0:
@@ -68,13 +65,21 @@ def _basic_min_via_python(vec, mpiComm):
     else:
         global_min = None
 
-    global_min = mpiComm.bcast(global_min, root=0)
+    global_min = comm.bcast(global_min, root=0)
 
     return global_min
 
 def _basic_A_transpose_dot_b_via_python(A, b, comm):
     '''
-    Compute A^T B when A's columns are distributed.
+    Computes A^T B when A and B's columns are row-distributed.
+
+    Args:
+        A (np.array): Local array
+        B (np.array): Local array
+        comm (MPI_Comm): MPI communicator
+
+    Returns:
+        np.array: The dot product of A^T and B
     '''
     mpi_rank = comm.Get_rank()
     num_processes = comm.Get_size()
@@ -97,13 +102,18 @@ def _basic_A_transpose_dot_b_via_python(A, b, comm):
 
     return np.reshape(ATb_glob, np.shape(tmp))
 
-def _basic_svd_method_of_snapshots_via_python(snapshots, comm):
-    '''Performs SVD via method of snapshots'''
-    #
-    # outputs:
-    # modes, Phi: numpy array where each column is a POD mode
-    # energy, sigma: energy associated with each mode (singular values)
+def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm):
+    '''
+    Performs SVD via method of snapshots.
 
+    Args:
+        snapshots (np.array): Distributed array of snapshots
+        comm (MPI_Comm): MPI communicator
+
+    Returns:
+        U (np.array): Phi, or modes; a numpy array where each column is a POD mode
+        sigma (float): Energy; the energy associated with each mode (singular values)
+    '''
     STS = _basic_A_transpose_dot_b_via_python(snapshots, snapshots, comm)
     Lam,E = np.linalg.eig(STS)
     sigma = np.sqrt(Lam)
@@ -115,23 +125,19 @@ def _basic_svd_method_of_snapshots_via_python(snapshots, comm):
 
 # def _basic_orthogonalization_method_of_snapshots():
 
-# def _basic_stretch_svd():
-
-# def _basic_stretch_qr():
-
-# def _basic_stretch_basic_linear_solve():
-
-# def _basic_unlikely_svd():
-
-# def _basic_unlikely_qr():
-
-# def _basic_unlikely_basic_linear_solve():
 
 ##############
 ### import ###
 ##############
 try:
-    from ._linalg import myfunc
+    from ._linalg import *
+    dist_max = _max
+    dist_min = _min
+    At_dot_b = _At_dot_b
+    svd_method_of_snapshots = _svd_methods_of_snapshots
 except ImportError:
     myfunc = _basic_func_via_python
-    #max = _basic_max_via_python
+    dist_max = _basic_max_via_python
+    dist_min = _basic_min_via_python
+    At_dot_b = _basic_A_transpose_dot_b_via_python
+    svd_method_of_snapshots = _basic_svd_method_of_snapshots_impl_via_python
