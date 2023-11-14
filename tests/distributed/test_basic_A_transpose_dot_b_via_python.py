@@ -12,15 +12,21 @@ from pressiolinalg.linalg import _basic_A_transpose_dot_b_via_python
 ################################################################
 
 def distribute_array(global_array, comm):
-    """Distribute an array among processes"""
+    """
+    Distribute an array among processes.
+    """
     mpi_rank = comm.Get_rank()
     num_processes = comm.Get_size()
 
     n_rows, n_cols = global_array.shape
     n_local_rows = int(n_rows // num_processes)
 
+    # Scatter the array rows to all processes
     local_array = np.empty((n_local_rows, n_cols), dtype=float)
     comm.Scatter(global_array, local_array, root=0)
+
+    # print(f"global_array: {global_array}")
+    # print(f"local_array: {local_array}")
 
     return local_array
 
@@ -36,9 +42,9 @@ def setup_A_transpose_dot_b(A, b, comm):
 
     return tmp_result, expected_result
 
-###############################################################
-######################## At dot b test ########################
-###############################################################
+##############################################################
+####################### At dot b tests #######################
+##############################################################
 
 def test_basic_A_transpose_dot_b_via_python_gram():
     comm = MPI.COMM_WORLD
@@ -46,7 +52,6 @@ def test_basic_A_transpose_dot_b_via_python_gram():
     A = np.random.rand(num_processes*2, 3)
     result, expected = setup_A_transpose_dot_b(A, A, comm)
     assert np.allclose(result, expected)
-
 
 if __name__ == "__main__":
     test_basic_A_transpose_dot_b_via_python_gram()

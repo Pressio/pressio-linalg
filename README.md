@@ -1,3 +1,5 @@
+[![Unit Tests](https://github.com/Pressio/pressio-linalg/actions/workflows/test.yaml/badge.svg)](https://github.com/Pressio/pressio-linalg/actions/workflows/test.yaml/badge.svg)
+
 # pressio-linalg
 
 ## Installation
