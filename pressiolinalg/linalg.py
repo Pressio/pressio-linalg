@@ -2,13 +2,17 @@
 '''
 see this for why this file exists and is done this way
 https://stackoverflow.com/questions/47599162/pybind11-how-to-package-c-and-python-code-into-a-single-package?rq=1
+
+The corresponding numpy API is included so we know what features we can add.
 '''
 
 import numpy as np
 
+
 def _basic_func_via_python(vec):
     print("myfunc purely python")
 
+# np.max(a, axis=None, out=None, keepdims=<no value>, initial=<no value>, where=<no value>)
 def _basic_max_via_python(vec, comm):
     '''
     Finds the maximum of a distributed vector.
@@ -39,6 +43,7 @@ def _basic_max_via_python(vec, comm):
 
     return global_max
 
+# np.min(a, axis=None, out=None, keepdims=<no value>, initial=<no value>, where=<no value>)
 def _basic_min_via_python(vec, comm):
     '''
     Finds the minimum of a distributed vector.
@@ -69,6 +74,8 @@ def _basic_min_via_python(vec, comm):
 
     return global_min
 
+# np.dot(a, b, out=None)
+# numpy.matmul(x1, x2, /, out=None, *, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj, axes, axis])
 def _basic_A_transpose_dot_b_via_python(A, b, comm):
     '''
     Computes A^T B when A and B's columns are row-distributed.
@@ -102,6 +109,7 @@ def _basic_A_transpose_dot_b_via_python(A, b, comm):
 
     return np.reshape(ATb_glob, np.shape(tmp))
 
+# np.linalg.svd(a, full_matrices=True, compute_uv=True, hermitian=False)
 def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm):
     '''
     Performs SVD via method of snapshots.

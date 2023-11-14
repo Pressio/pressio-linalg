@@ -7,7 +7,7 @@ from pressiolinalg.linalg import _basic_svd_method_of_snapshots_impl_via_python
 
 
 def distribute_array(global_array, comm):
-    """Distribute an array among processes."""
+    '''Distribute an array among processes.'''
     num_processes = comm.Get_size()
 
     n_rows, n_cols = global_array.shape
@@ -28,6 +28,7 @@ def create_snapshots(comm):
     return global_snapshots, local_snapshots
 
 def test_basic_svd_method_of_snapshots_impl_via_python():
+    # Solve in parallel
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     num_processes = comm.Get_size()

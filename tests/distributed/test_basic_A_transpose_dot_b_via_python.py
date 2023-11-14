@@ -8,7 +8,7 @@ from pressiolinalg.linalg import _basic_A_transpose_dot_b_via_python
 
 
 def distribute_array(global_array, comm):
-    """Distribute an array among all processes."""
+    '''Distribute an array among all processes.'''
     num_processes = comm.Get_size()
 
     n_rows, n_cols = global_array.shape
