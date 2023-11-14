@@ -21,6 +21,8 @@ pip install .
 
 ### Heavy Mode
 
+_Note: Heavy Mode is not currently supported._
+
 To install with heavy mode, we envision the following scenarios:
 
 #### a) You already have Trilinos installed somewhere
