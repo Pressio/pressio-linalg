@@ -104,7 +104,7 @@ def _basic_svd_method_of_snapshots_via_python(snapshots, comm):
     # modes, Phi: numpy array where each column is a POD mode
     # energy, sigma: energy associated with each mode (singular values)
 
-    STS = A_transpose_dot_bImpl(snapshots, snapshots, comm)
+    STS = _basic_A_transpose_dot_b_via_python(snapshots, snapshots, comm)
     Lam,E = np.linalg.eig(STS)
     sigma = np.sqrt(Lam)
     U = np.zeros(np.shape(snapshots))
