@@ -17,7 +17,7 @@ def _basic_max_via_python(vec, mpiComm):
     Finds the maximum of a distributed vector.
 
     Args:
-        vec (np.array): Input row-distributed vector
+        vec (np.array): Local vector
         mpiComm (MPI_Comm): MPI communicator
 
     Returns:
@@ -30,12 +30,13 @@ def _basic_max_via_python(vec, mpiComm):
         return max(vec)
 
     local_max = max(vec)
-
-    data = mpiComm.gather(local_max.flatten(), root=0)
+    data = mpiComm.gather(local_max, root=0)
 
     global_max = 0
     if mpi_rank == 0:
         global_max = max(data)
+    else:
+        global_max = None
 
     global_max = mpiComm.bcast(global_max, root=0)
 
@@ -46,7 +47,7 @@ def _basic_min_via_python(vec, mpiComm):
     Finds the minimum of a distributed vector.
 
     Args:
-        vec (np.array): Input row-distributed vector
+        vec (np.array): Local vector
         mpiComm (MPI_Comm): MPI communicator
 
     Returns:
@@ -59,12 +60,13 @@ def _basic_min_via_python(vec, mpiComm):
         return min(vec)
 
     local_min = min(vec)
-
-    data = mpiComm.gather(local_min.flatten(), root=0)
+    data = mpiComm.gather(local_min, root=0)
 
     global_min = 0
     if mpi_rank == 0:
         global_min = min(data)
+    else:
+        global_min = None
 
     global_min = mpiComm.bcast(global_min, root=0)
 
@@ -81,7 +83,6 @@ def _basic_A_transpose_dot_b_via_python(A, b, comm):
         return np.dot(A.transpose(), b)
 
     tmp = np.dot(A.transpose(), b)
-
     data = comm.gather(tmp.flatten(), root=0)
 
     ATb_glob = np.zeros(np.size(tmp))

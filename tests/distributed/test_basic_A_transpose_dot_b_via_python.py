@@ -11,60 +11,43 @@ from pressiolinalg.linalg import _basic_A_transpose_dot_b_via_python
 ####################### Helper functions #######################
 ################################################################
 
-def distribute_matrix(matrix, comm):
-    """
-    Distribute a matrix among processes.
-    """
+def distribute_array(global_array, comm):
+    """Distribute an array among processes"""
     mpi_rank = comm.Get_rank()
     num_processes = comm.Get_size()
 
-    rows, cols = matrix.shape
-    local_rows = int(rows // num_processes)
+    n_rows, n_cols = global_array.shape
+    n_local_rows = int(n_rows // num_processes)
 
-    # Scatter the matrix rows to all processes
-    local_matrix_rows = np.zeros((local_rows, cols))
-    comm.Scatter([matrix, MPI.DOUBLE], [local_matrix_rows, MPI.DOUBLE], root=0)
+    local_array = np.empty((n_local_rows, n_cols), dtype=float)
+    comm.Scatter(global_array, local_array, root=0)
 
-    return local_matrix_rows
+    return local_array
 
 def setup_A_transpose_dot_b(A, b, comm):
-
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    A_dist = distribute_matrix(A, comm)
-    b_dist = distribute_matrix(b, comm)
+    A_dist = distribute_array(A, comm)
+    b_dist = distribute_array(b, comm)
 
-    result = _basic_A_transpose_dot_b_via_python(A_dist, b_dist, comm)
-    if rank == 0:
-        print(f"\n-----------------\nresult:\n {result}")
+    tmp_result = _basic_A_transpose_dot_b_via_python(A_dist, b_dist, comm)
+    expected_result = np.dot(A.transpose(), b)
 
-    expected_result = np.dot(A.transpose(), b).astype(float)
-    if rank == 0:
-        print(f"\nexpected_result: \n {expected_result}\n-----------------\n")
+    return tmp_result, expected_result
 
-    return result, expected_result
-
-
-##############################################################
-####################### At dot b tests #######################
-##############################################################
+###############################################################
+######################## At dot b test ########################
+###############################################################
 
 def test_basic_A_transpose_dot_b_via_python_gram():
     comm = MPI.COMM_WORLD
     num_processes = comm.Get_size()
     A = np.random.rand(num_processes*2, 3)
-    result, expected_result = setup_A_transpose_dot_b(A, A, comm)
-    assert result.all() == expected_result.all()
+    result, expected = setup_A_transpose_dot_b(A, A, comm)
+    assert np.allclose(result, expected)
 
-# def test_basic_A_transpose_dot_b_via_python_standard():
-#     comm = MPI.COMM_WORLD
-#     A = np.array([[1,2,3],
-#                   [4,5,6]])
-#     b = np.array([2,3,4])
-#     result, expected_result = setup_A_transpose_dot_b(A, b, comm)
-#     np.testing.assert_allclose(result, expected_result, atol=1e-10)
 
 if __name__ == "__main__":
     test_basic_A_transpose_dot_b_via_python_gram()
-    # test_basic_A_transpose_dot_b_via_python_standard()
+    test_basic_A_transpose_dot_b_via_python_matrix_vector()
