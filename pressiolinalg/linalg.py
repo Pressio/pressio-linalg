@@ -28,14 +28,14 @@ def _basic_max_via_python(vec, comm):
     num_processes = comm.Get_size()
 
     if num_processes == 1:
-        return max(vec)
+        return np.max(vec)
 
-    local_max = max(vec)
+    local_max = np.max(vec)
     data = comm.gather(local_max, root=0)
 
     global_max = 0
     if mpi_rank == 0:
-        global_max = max(data)
+        global_max = np.max(data)
     else:
         global_max = None
 
@@ -59,14 +59,14 @@ def _basic_min_via_python(vec, comm):
     num_processes = comm.Get_size()
 
     if num_processes == 1:
-        return min(vec)
+        return np.min(vec)
 
-    local_min = min(vec)
+    local_min = np.min(vec)
     data = comm.gather(local_min, root=0)
 
     global_min = 0
     if mpi_rank == 0:
-        global_min = min(data)
+        global_min = np.min(data)
     else:
         global_min = None
 
@@ -139,13 +139,13 @@ def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm):
 ##############
 try:
     from ._linalg import *
-    dist_max = _max
-    dist_min = _min
+    max = _max
+    min = _min
     At_dot_b = _At_dot_b
     svd_method_of_snapshots = _svd_methods_of_snapshots
 except ImportError:
     myfunc = _basic_func_via_python
-    dist_max = _basic_max_via_python
-    dist_min = _basic_min_via_python
+    max = _basic_max_via_python
+    min = _basic_min_via_python
     At_dot_b = _basic_A_transpose_dot_b_via_python
     svd_method_of_snapshots = _basic_svd_method_of_snapshots_impl_via_python
