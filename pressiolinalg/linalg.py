@@ -21,9 +21,9 @@ def _basic_mpi_func_via_python(vec, comm):
 
 def _basic_print_comm(comm):
     if comm == MPI.COMM_WORLD:
-        print("Python received the world")
+        return "Python received the world"
     else:
-        print("Python received something else")
+        return "Python received something else"
 
 # np.max(a, axis=None, out=None, keepdims=<no value>, initial=<no value>, where=<no value>)
 def _basic_max_via_python(vec, comm):

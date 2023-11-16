@@ -3,6 +3,7 @@
 #define PRESSIOTOOLS_MAIN_BINDER_HPP_
 
 #include <iostream>
+#include <string>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "mpi.h"
@@ -64,11 +65,11 @@ void _myfunc(py_f_arr vec) {
 }
 
 // Recieve a communicator and check if it equals MPI_COMM_WORLD
-void _print_comm(mpi4py_comm comm) {
+std::string _print_comm(mpi4py_comm comm) {
   if (comm == MPI_COMM_WORLD) {
-    std::cout << "C++ received the world." << std::endl;
+    return "C++ received the world.";
   } else {
-    std::cout << "C++ received something else." << std::endl;
+    return "C++ received something else.";
   }
 }
 }
