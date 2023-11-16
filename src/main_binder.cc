@@ -67,7 +67,7 @@ void _myfunc(py_f_arr vec) {
 // Recieve a communicator and check if it equals MPI_COMM_WORLD
 std::string _print_comm(mpi4py_comm comm) {
   if (comm == MPI_COMM_WORLD) {
-    return "C++ received the world.";
+    return "C++ received the world";
   } else {
     return "C++ received something else.";
   }

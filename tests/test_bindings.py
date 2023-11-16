@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import mpi4py
 
@@ -8,4 +10,7 @@ func = myfunc(vector)
 
 comm = MPI.COMM_WORLD
 output = print_comm(comm)
-assert(output == "C++ received the world.")
+if os.environ.get("PRESSIO_LINALG_CPP"):
+    assert(output == "C++ received the world")
+else:
+    assert(output == "Python received the world")
