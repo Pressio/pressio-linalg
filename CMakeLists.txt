@@ -47,8 +47,8 @@ target_include_directories  (${modulename} PRIVATE ${MPI_BASE_DIR}/include)
 target_link_libraries       (${modulename} PRIVATE mpi)
 
 # Find mpi4py
-set(MPI4PY_BASE_DIR $ENV{MPI4PY_BASE_DIR})
-target_include_directories  (${modulename} PRIVATE ${MPI4PY_BASE_DIR}/include)
+set(MPI4PY_INCLUDE_DIR $ENV{MPI4PY_INCLUDE_DIR})
+target_include_directories  (${modulename} PRIVATE ${MPI4PY_INCLUDE_DIR})
 
 # if (NOT ${TRILINOS_ROOT} STREQUAL "")
 #  include(tplTrilinos)

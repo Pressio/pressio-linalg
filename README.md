@@ -4,36 +4,61 @@
 
 ## Current installation (subject to change)
 
-This section will change as we finalize the installation process for the repository. For now, we are working on supporting parallel C++ bindings. To install and test, begin by cloning the repository:
+This README will change as we finalize the installation process for the repository. For now, we are working on supporting parallel C++ bindings. To install and test, begin by cloning the repository:
 ```sh
 git clone https://github.com/Pressio/pressio-linalg.git
 cd pressio-linalg
 ```
-Then, set the following environment variables:
+### Light Mode
+
+To install in  Light mode (Python only), just run
+```sh
+pip install .
+```
+from the project directory.
+
+### Heavy Mode
+
+For now, "Heavy Mode" just means Python with C++ bindings (e.g. I have not incorporated Trilinos or Pressio yet). To install with these bindings, you need to define two environment variables:
+
 ```sh
 export MPI_BASE_DIR=<path-to-MPI-install>
-export MPI4PY_BASE_DIR=<path-to-mpi4py-install>
+export MPI4PY_INCLUDE_DIR=<path-to-mpi4py-include-dir>
 ```
-You can find the base directory of mpi4py by running this Python code, either on the command line or in a script:
+You can find the include directory of mpi4py by running this Python code, either on the command line or in a script:
 ```python
 import mpi4py
 print(mpi4py.get_include())
 ```
-Note that the environment variable above is for the _base directory_, not the include directory, which is what this command will output.
-
-Once these environment variables have been set, run
+With this in mind, you can export the necessary environment variables automatically with these commands:
 ```sh
-pip install .
+export MPI_BASE_DIR=$(dirname $(dirname $(which mpicxx)))
+export MPI4PY_INCLUDE_DIR=$(python -c 'import mpi4py; print(mpi4py.get_include())')
 ```
-to install the package.
+Once these have been set, run
+```sh
+PRESSIO-LINALG-CPP=1 pip install .
+```
+to install the package with the C++ bindings.
+
+## Testing the Bindings
 
 Once the package has installed, you can test the Python/C++ bindings by running
 ```sh
 python tests/test_bindings.py
 ```
-This file calls the public-facing function and should print the output from the functions implemented in C++ (the source of the function is clear in the output--e.g. `C++ received MPI_COMM_WORLD`).
+This file calls public-facing functions and prints the output from either the Python or C++ implementation (depending on how you installed the package). The source of the function is clear in the output--e.g. `C++ received the world`.
 
----
+## Testing in General
+
+To run the other tests on the code, run
+
+```sh
+mpirun -n <np> python -m pytest tests/* --with-mpi
+```
+where, `<np>` is the number of processors you would like to use.
+
+<!-- ---
 
 ## Installation
 
@@ -86,4 +111,4 @@ Once you have installed the package, run tests with
 ```sh
 mpirun -n <np> python -m pytest tests/* --with-mpi
 ```
-where, `<np>` is the number of processors you would like to use.
+where, `<np>` is the number of processors you would like to use. -->
