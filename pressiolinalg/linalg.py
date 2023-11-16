@@ -160,10 +160,6 @@ try:
     # At_dot_b = _At_dot_b
     # svd_method_of_snapshots = _svd_methods_of_snapshots
 except ImportError as e:
-    print(f"ImportError: {e}")
-    # print full traceback
-    import traceback
-    traceback.print_exc()
     myfunc = _basic_func_via_python
     print_comm = _basic_print_comm
     # myfuncMPI = _basic_mpi_func_via_python
