@@ -1112,7 +1112,7 @@ public:
     template <typename... Ix>
     const T &operator()(Ix... index) const {
 #if !defined(NDEBUG)
-        check_rank_precondition(sizeof...(index));
+        this->check_rank_precondition(sizeof...(index));
     check_dimensions(index...);
 #endif
         return *(static_cast<const T *>(array::data())
@@ -1123,7 +1123,7 @@ public:
     template <typename... Ix>
     T &operator()(Ix... index) {
 #if !defined(NDEBUG)
-        check_rank_precondition(sizeof...(index));
+        this->check_rank_precondition(sizeof...(index));
     check_dimensions(index...);
 #endif
         return *(static_cast<T *>(array::mutable_data())

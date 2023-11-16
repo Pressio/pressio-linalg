@@ -41,11 +41,20 @@ add_subdirectory            (${CMAKE_CURRENT_SOURCE_DIR}/pybind11)
 pybind11_add_module         (${modulename} src/main_binder.cc)
 target_compile_definitions  (${modulename} PRIVATE MODNAME=${modulename})
 
-if (NOT ${TRILINOS_ROOT} STREQUAL "")
-  include(tplTrilinos)
-  target_include_directories(${modulename} PRIVATE ${TRILINOS_ROOT}/include)
-  target_link_directories   (${modulename} PRIVATE ${TRILINOS_ROOT}/lib)
-  target_link_libraries     (${modulename} PRIVATE ${TRILINOS_LIB_NAMES})
-  target_compile_definitions(${modulename} PRIVATE PRESSIOTOOLS_ENABLE_TPL_TRILINOS)
-  target_compile_definitions(${modulename} PRIVATE PRESSIOTOOLS_ENABLE_TPL_MPI)
-endif()
+# Find MPI
+set(MPI_BASE_DIR $ENV{MPI_BASE_DIR})
+target_include_directories  (${modulename} PRIVATE ${MPI_BASE_DIR}/include)
+target_link_libraries       (${modulename} PRIVATE mpi)
+
+# Find mpi4py
+set(MPI4PY_BASE_DIR $ENV{MPI4PY_BASE_DIR})
+target_include_directories  (${modulename} PRIVATE ${MPI4PY_BASE_DIR}/include)
+
+# if (NOT ${TRILINOS_ROOT} STREQUAL "")
+#  include(tplTrilinos)
+#  target_include_directories(${modulename} PRIVATE ${TRILINOS_ROOT}/include)
+#  target_link_directories   (${modulename} PRIVATE ${TRILINOS_ROOT}/lib)
+#  target_link_libraries     (${modulename} PRIVATE ${TRILINOS_LIB_NAMES})
+#  target_compile_definitions(${modulename} PRIVATE PRESSIOTOOLS_ENABLE_TPL_TRILINOS)
+#  target_compile_definitions(${modulename} PRIVATE PRESSIOTOOLS_ENABLE_TPL_MPI)
+# endif()

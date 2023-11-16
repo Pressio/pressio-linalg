@@ -8,9 +8,22 @@ The corresponding numpy API is included so we know what features we can add.
 
 import numpy as np
 
+import mpi4py
+from mpi4py import MPI
+
 
 def _basic_func_via_python(vec):
     print("myfunc purely python")
+
+def _basic_mpi_func_via_python(vec, comm):
+    rank = comm.Get_rank()
+    print(f"Python rank: {rank}")
+
+def _basic_print_comm(comm):
+    if comm == MPI.COMM_WORLD:
+        print("Python received the world")
+    else:
+        print("Python received something else")
 
 # np.max(a, axis=None, out=None, keepdims=<no value>, initial=<no value>, where=<no value>)
 def _basic_max_via_python(vec, comm):
@@ -138,14 +151,23 @@ def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm):
 ### import ###
 ##############
 try:
-    from ._linalg import *
-    max = _max
-    min = _min
-    At_dot_b = _At_dot_b
-    svd_method_of_snapshots = _svd_methods_of_snapshots
-except ImportError:
+    from ._linalg import _myfunc, _print_comm
+    myfunc = _myfunc
+    print_comm = _print_comm
+    # myfuncMPI = _myfuncMPI
+    # max = _max
+    # min = _min
+    # At_dot_b = _At_dot_b
+    # svd_method_of_snapshots = _svd_methods_of_snapshots
+except ImportError as e:
+    print(f"ImportError: {e}")
+    # print full traceback
+    import traceback
+    traceback.print_exc()
     myfunc = _basic_func_via_python
-    max = _basic_max_via_python
-    min = _basic_min_via_python
-    At_dot_b = _basic_A_transpose_dot_b_via_python
-    svd_method_of_snapshots = _basic_svd_method_of_snapshots_impl_via_python
+    print_comm = _basic_print_comm
+    # myfuncMPI = _basic_mpi_func_via_python
+    # max = _basic_max_via_python
+    # min = _basic_min_via_python
+    # At_dot_b = _basic_A_transpose_dot_b_via_python
+    # svd_method_of_snapshots = _basic_svd_method_of_snapshots_impl_via_python

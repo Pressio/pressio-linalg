@@ -173,9 +173,9 @@ class install(_install):
     _install.finalize_options(self)
 
   def run(self):
-    global trilinosBaseDir
+    # global trilinosBaseDir
     #serialOnly      = self.single_node
-    trilinosBaseDir = self.trilinos_basedir
+    # trilinosBaseDir = self.trilinos_basedir
     _install.run(self)
 
 # ----------------------------------------------
@@ -207,10 +207,13 @@ class CMakeBuild(build_ext):
     # Can be set with Conda-Build, for example.
     cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
 
+    serial = False
+
     #-----------------------
     # IF ONLY SERIAL IS TRUE
     #-----------------------
-    if trilinosBaseDir == "void":
+    # if trilinosBaseDir == "void":
+    if serial:
       # if "CXX" not in os.environ:
       #   msg = "\n **ERROR**: \n CXX env var is missing, needs to point to your C++ compiler"
       #   raise RuntimeError(msg)
@@ -247,15 +250,15 @@ class CMakeBuild(build_ext):
         raise RuntimeError(msg)
 
       # check if trilinos_basedir is present, if not attemp build
-      trilinosRoot=""
-      if trilinosBaseDir == "void":
-        msg = "You did not specify --trilinos-basedir, so attempting to build Trilinos on my own"
-        print(msg)
-        trilinosRoot = trilinos_for_mpi_build(self.build_temp)
-      else:
-        msg = "Found trilinos base dir={}".format(trilinosBaseDir)
-        print(msg)
-        trilinosRoot = trilinosBaseDir
+      # trilinosRoot=""
+      # if trilinosBaseDir == "void":
+      #   msg = "You did not specify --trilinos-basedir, so attempting to build Trilinos on my own"
+      #   print(msg)
+      #   trilinosRoot = trilinos_for_mpi_build(self.build_temp)
+      # else:
+      #   msg = "Found trilinos base dir={}".format(trilinosBaseDir)
+      #   print(msg)
+      #   trilinosRoot = trilinosBaseDir
 
       # build/install pressio-tools
       #cc = os.environ.get("MPI_BASE_DIR")+"/bin/mpicc"
@@ -266,7 +269,7 @@ class CMakeBuild(build_ext):
         "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(extdir),
         "-DPYTHON_EXECUTABLE={}".format(sys.executable),
         "-DCMAKE_BUILD_TYPE={}".format(buildMode),
-        "-DTRILINOS_ROOT={}".format(trilinosRoot),
+        # "-DTRILINOS_ROOT={}".format(trilinosRoot),
       ]
       build_args = []
 
@@ -283,15 +286,15 @@ class CMakeBuild(build_ext):
 # Check if the script is run with "python setup.py install"
 # -----------------------------
 
-if 'install' in sys.argv:
-    cmdclass = {
-        "build_ext": CMakeBuild,
-        "install": install
-    }
-else:
-    cmdclass = {
-        "install": install,
-    }
+# if 'install' in sys.argv:
+cmdclass = {
+    "build_ext": CMakeBuild,
+    "install": install
+}
+# else:
+#     cmdclass = {
+#         "install": install,
+#     }
 
 # -----------------------------
 # setup
