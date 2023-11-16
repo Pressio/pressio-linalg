@@ -72,34 +72,24 @@ jobs:
           echo $GITHUB_WORKSPACE
           git status
 
-  test_serial:
-    runs-on: ubuntu-latest
-    needs: setup
+      - name: Install package (Light mode)
+        run: |
+          echo $PWD
+          python -m pip install --upgrade pip
+          pip list
+          pip install .
 
-    steps:
-    - name: Install package (Light mode)
-      run: |
-        echo $PWD
-        python -m pip install --upgrade pip
-        pip list
-        pip install .
+      - name: Run tests (Light mode, MPI, n=3)
+        run: |
+          mpirun -n 3 python -m pytest tests/* --with-mpi
 
-    - name: Run tests (MPI, n=3)
-      run: |
-        mpirun -n 3 python -m pytest tests/* --with-mpi
+      - name: Install package (C++ Bindings)
+        run: |
+          echo $PWD
+          python -m pip install --upgrade pip
+          pip list
+          PRESSIO_LINALG_CPP=1 pip install .
 
-  test_mpi:
-    runs-on: ubuntu-latest
-    needs: setup
-
-    steps:
-    - name: Install package (C++ Bindings)
-      run: |
-        echo $PWD
-        python -m pip install --upgrade pip
-        pip list
-        PRESSIO_LINALG_CPP=1 pip install .
-
-    - name: Run tests (MPI, n=3)
-      run: |
-        mpirun -n 3 python -m pytest tests/* --with-mpi
+      - name: Run tests (C++ Bindings, MPI, n=3)
+        run: |
+          mpirun -n 3 python -m pytest tests/* --with-mpi

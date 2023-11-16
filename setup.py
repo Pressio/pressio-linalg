@@ -320,8 +320,8 @@ else:
   cmdclass = {
       "build_ext": CMakeBuild,
       "install": install
-  ext_modules=[CMakeExtension("pressiolinalg._linalg")]
   }
+  ext_modules=[CMakeExtension("pressiolinalg._linalg")]
 
 # -----------------------------
 # setup
