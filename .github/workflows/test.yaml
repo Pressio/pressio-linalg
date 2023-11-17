@@ -96,4 +96,4 @@ jobs:
 
       - name: Run tests (C++ Bindings, MPI, n=3)
         run: |
-          PRESSIO-LINALG-CPP=1 mpirun -n 3 python -m pytest tests/* --with-mpi
+          PRESSIO_LINALG_CPP=1 mpirun -n 3 python -m pytest tests/* --with-mpi
