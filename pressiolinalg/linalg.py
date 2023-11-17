@@ -13,7 +13,9 @@ from mpi4py import MPI
 
 
 def _basic_func_via_python(vec):
-    print("Using only Python")
+    status = "Using only Python"
+    print(status)
+    return status
 
 def _basic_mpi_func_via_python(vec, comm):
     rank = comm.Get_rank()
