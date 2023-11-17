@@ -5,13 +5,18 @@ import mpi4py
 
 from pressiolinalg.linalg import *
 
+# TESTING MYFUNC
+print("Testing myfunc")
 vector = np.arange(1,10)
 func = myfunc(vector)
 
+# TESTING PRINT_COMM
+print("\nTesting print_comm")
 comm = MPI.COMM_WORLD
-output = print_comm(comm)
-print(output)
-# if os.environ["PRESSIO_LINALG_CPP"] == "1":
-#     assert(output == "C++ received the world")
-# else:
-#     assert(output == "Python received the world")
+comm_address = hex(MPI._addressof(comm))
+ftn_address = hex(print_comm(comm))
+
+print(f"    comm address:     {comm_address}")
+print(f"    function address: {ftn_address}")
+
+assert ftn_address == comm_address, f"{ftn_address} != {comm_address}"
