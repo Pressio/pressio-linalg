@@ -78,6 +78,6 @@ jobs:
           echo $PWD
           python -m pip install --upgrade pip
           pip list
-          export PRESSIO_LINALG_CPP=1
+          echo "PRESSIO_LINALG_CPP=1" >> $GITHUB_ENV
           pip install .
           mpirun -n 3 python -m pytest tests/* --with-mpi
