@@ -37,9 +37,6 @@ if os.environ.get("PRESSIO_LINALG_FIND_TRILINOS"):
     trilinosBaseDir = os.environ.get("PRESSIO_LINALG_FIND_TRILINOS")
     pressio_python_only = False
 
-if pressio_cpp_bindings:
-    print("Installing package with CPP bindings")
-
 # ----------------------------------------------
 # Metadata
 # ----------------------------------------------

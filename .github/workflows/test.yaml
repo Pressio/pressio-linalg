@@ -65,24 +65,19 @@ jobs:
           echo $GITHUB_WORKSPACE
           git status
 
-      - name: Install package (Light mode)
+      - name: Install and test package (Light mode)
         run: |
           echo $PWD
           python -m pip install --upgrade pip
           pip list
           pip install .
-
-      - name: Run tests (Light mode, MPI, n=3)
-        run: |
           mpirun -n 3 python -m pytest tests/* --with-mpi
 
-      - name: Install package (C++ Bindings)
+      - name: Install and test package (C++ Bindings)
         run: |
           echo $PWD
           python -m pip install --upgrade pip
           pip list
-          PRESSIO_LINALG_CPP=1 pip install .
-
-      - name: Run tests (C++ Bindings, MPI, n=3)
-        run: |
-          PRESSIO_LINALG_CPP=1 mpirun -n 3 python -m pytest tests/* --with-mpi
+          export PRESSIO_LINALG_CPP=1
+          pip install .
+          mpirun -n 3 python -m pytest tests/* --with-mpi

@@ -16,7 +16,7 @@ if os.environ.get("PRESSIO_LINALG_CPP"):
 def test_myfunc():
     vector = np.arange(1,10)
     func = myfunc(vector)
-    print(f"func: {func}")
+    print(f"Output: {func}")
     if python_only:
         assert func == "Using only Python"
     elif cpp_bindings:
