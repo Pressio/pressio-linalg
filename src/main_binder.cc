@@ -11,48 +11,6 @@
 
 
 namespace py = pybind11;
-
-// Create a type that the C++ compiler will recognize
-struct mpi4py_comm {
-  mpi4py_comm() = default;
-  mpi4py_comm(MPI_Comm value) : value(value) {}
-  operator MPI_Comm () { return value; }
-
-  MPI_Comm value;
-};
-
-// Define the type caster
-namespace pybind11 { namespace detail {
-  template <> struct type_caster<mpi4py_comm> {
-    public:
-      PYBIND11_TYPE_CASTER(mpi4py_comm, _("mpi4py_comm"));
-
-      // Python -> C++
-      bool load(handle src, bool) {
-        PyObject *py_src = src.ptr();
-
-        // Check that we have been passed an mpi4py communicator
-        if (PyObject_TypeCheck(py_src, &PyMPIComm_Type)) {
-          // Convert to regular MPI communicator
-          value.value = *PyMPIComm_Get(py_src);
-        } else {
-          return false;
-        }
-
-        return !PyErr_Occurred();
-      }
-
-      // C++ -> Python
-      static handle cast(mpi4py_comm src,
-                         return_value_policy /* policy */,
-                         handle /* parent */)
-      {
-        // Create an mpi4py handle
-        return PyMPIComm_New(src.value);
-      }
-  };
-}} // namespace pybind11::detail
-
 namespace{
 
 using scalar_t  = double;
@@ -60,17 +18,32 @@ using py_c_arr  = pybind11::array_t<scalar_t, pybind11::array::c_style>;
 using py_f_arr  = pybind11::array_t<scalar_t, pybind11::array::f_style>;
 
 // Simple function to serial bindings
-void _myfunc(py_f_arr vec) {
-  std::cout << "my fancy func impl in C++\n";
+std::string _myfunc(py_f_arr vec) {
+  std::string status = "Using C++ bindings";
+  return status;
 }
 
-// Recieve a communicator and check if it equals MPI_COMM_WORLD
-std::string _print_comm(mpi4py_comm comm) {
-  if (comm == MPI_COMM_WORLD) {
-    return "C++ received the world";
-  } else {
-    return "C++ received something else.";
-  }
+MPI_Comm* get_mpi_comm(py::object py_comm) {
+  auto comm_ptr = PyMPIComm_Get(py_comm.ptr());
+
+  if (!comm_ptr)
+    throw py::error_already_set();
+
+  return comm_ptr;
+}
+
+// Recieve a communicator, print some attributes of it, and return the memory address (to compare to Python)
+uintptr_t _print_comm(MPI_Comm* comm_ptr) {
+  MPI_Comm& comm = *comm_ptr;
+  int size = 0;
+  MPI_Comm_size(comm, &size);
+
+  int rank = 0;
+  MPI_Comm_rank(comm, &rank);
+
+  uintptr_t int_comm_ptr = reinterpret_cast<uintptr_t>(comm_ptr);
+
+  return int_comm_ptr;
 }
 }
 
@@ -82,9 +55,11 @@ PYBIND11_MODULE(MODNAME, mParent)
   }
 
   mParent.def("_myfunc", &_myfunc);
-  mParent.def("_print_comm", &_print_comm);
-
-  //mParent.def("max", &max);
+  mParent.def("_print_comm",
+              [](py::object py_comm) {
+                auto comm_ptr = get_mpi_comm(py_comm);
+                return _print_comm(comm_ptr);;
+              });
 };
 
 #endif

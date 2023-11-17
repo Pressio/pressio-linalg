@@ -13,17 +13,16 @@ from mpi4py import MPI
 
 
 def _basic_func_via_python(vec):
-    print("myfunc purely python")
+    status = "Using only Python"
+    return status
 
 def _basic_mpi_func_via_python(vec, comm):
     rank = comm.Get_rank()
     print(f"Python rank: {rank}")
 
 def _basic_print_comm(comm):
-    if comm == MPI.COMM_WORLD:
-        return "Python received the world"
-    else:
-        return "Python received something else"
+    print("Python received comm")
+    return MPI._addressof(comm)
 
 # np.max(a, axis=None, out=None, keepdims=<no value>, initial=<no value>, where=<no value>)
 def _basic_max_via_python(vec, comm):
@@ -162,6 +161,7 @@ try:
 except ImportError as e:
     myfunc = _basic_func_via_python
     print_comm = _basic_print_comm
+    # direct_print_comm = _basic_print_comm
     # myfuncMPI = _basic_mpi_func_via_python
     # max = _basic_max_via_python
     # min = _basic_min_via_python

@@ -41,17 +41,6 @@ jobs:
         run: |
           python -m pip install mpi4py
 
-      # - name: Setup Miniconda
-      #   uses: conda-incubator/setup-miniconda@v2.2.0
-      #   with:
-      #     miniconda-version: "latest"
-      #     python-version: ${{ matrix.python-version }}
-
-      # - name: Setup mpi4py
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     conda install -c conda-forge mpi4py ${{ matrix.mpi }}
-
       - name: Set Environment Variables
         run: |
           echo "OMPI_ALLOW_RUN_AS_ROOT=1" >> $GITHUB_ENV
@@ -76,24 +65,19 @@ jobs:
           echo $GITHUB_WORKSPACE
           git status
 
-      - name: Install package (Light mode)
+      - name: Install and test package (Light mode)
         run: |
           echo $PWD
           python -m pip install --upgrade pip
           pip list
           pip install .
-
-      - name: Run tests (Light mode, MPI, n=3)
-        run: |
           mpirun -n 3 python -m pytest tests/* --with-mpi
 
-      - name: Install package (C++ Bindings)
+      - name: Install and test package (C++ Bindings)
         run: |
           echo $PWD
           python -m pip install --upgrade pip
           pip list
-          PRESSIO_LINALG_CPP=1 pip install .
-
-      - name: Run tests (C++ Bindings, MPI, n=3)
-        run: |
+          echo "PRESSIO_LINALG_CPP=1" >> $GITHUB_ENV
+          pip install .
           mpirun -n 3 python -m pytest tests/* --with-mpi
