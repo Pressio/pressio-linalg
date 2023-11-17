@@ -92,8 +92,8 @@ jobs:
           echo $PWD
           python -m pip install --upgrade pip
           pip list
-          PRESSIO_LINALG_CPP=1 pip install .
+          export PRESSIO_LINALG_CPP=1 pip install .
 
       - name: Run tests (C++ Bindings, MPI, n=3)
         run: |
-          PRESSIO_LINALG_CPP=1 mpirun -n 3 python -m pytest tests/* --with-mpi
+          export PRESSIO_LINALG_CPP=1 mpirun -n 3 python -m pytest tests/* --with-mpi
