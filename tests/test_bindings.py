@@ -8,7 +8,7 @@ from pressiolinalg.linalg import *
 python_only = True
 cpp_bindings = False
 
-if os.environ.get('PRESSIO_LINALG_CPP'):
+if os.environ.get("PRESSIO_LINALG_CPP"):
     cpp_bindings = True
     python_only = False
 
