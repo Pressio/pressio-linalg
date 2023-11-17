@@ -13,7 +13,7 @@ from mpi4py import MPI
 
 
 def _basic_func_via_python(vec):
-    print("myfunc purely python")
+    print("Using only Python")
 
 def _basic_mpi_func_via_python(vec, comm):
     rank = comm.Get_rank()

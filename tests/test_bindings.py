@@ -5,14 +5,24 @@ import mpi4py
 
 from pressiolinalg.linalg import *
 
-# TESTING MYFUNC
+python_only = True
+cpp_bindings = False
+
+if os.environ.get('PRESSIO-LINALG-CPP'):
+    cpp_bindings = True
+    python_only = False
+
+# TESTING MYFUNC (makes sure install process worked)
 def test_myfunc():
     vector = np.arange(1,10)
     func = myfunc(vector)
-    assert 2 == 2 # this test is temporary
+    if python_only:
+        assert func == "Using only Python"
+    elif cpp_bindings:
+        assert func == "Using C++ bindings"
 
 # TESTING PRINT_COMM
-def test_print_comm:
+def test_print_comm():
     comm = MPI.COMM_WORLD
     comm_address = hex(MPI._addressof(comm))
     ftn_address = hex(print_comm(comm))

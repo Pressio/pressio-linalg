@@ -19,7 +19,7 @@ using py_f_arr  = pybind11::array_t<scalar_t, pybind11::array::f_style>;
 
 // Simple function to serial bindings
 void _myfunc(py_f_arr vec) {
-  std::cout << "my fancy func impl in C++\n";
+  std::cout << "Using C++ bindings";
 }
 
 MPI_Comm* get_mpi_comm(py::object py_comm) {
