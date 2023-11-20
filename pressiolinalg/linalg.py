@@ -109,17 +109,17 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm):
     num_processes = comm.Get_size()
 
     if flagA == "N":
-        mat1 = A
+        mat1 = A * alpha
     elif flagA == "T":
-        mat1 = A.transpose()
+        mat1 = A.transpose() * alpha
     else:
         print("Error!")
         mat1 = np.zeros(3,3)
 
     if flagB == "N":
-        mat2 = B
+        mat2 = B * beta
     elif flagB == "T":
-        mat2 = B.transpose()
+        mat2 = B.transpose() * beta
     else:
         print("Error!")
         mat2 = np.zeros(3,3)
@@ -131,19 +131,17 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm):
     tmp = np.dot(mat1, mat2)
     data = comm.gather(tmp.flatten(), root=0)
 
-    AB_glob = np.zeros(np.size(tmp))
+    C = np.reshape(C, np.size(tmp))
 
     if mpi_rank == 0:
         for j in range(0, num_processes):
-            AB_glob[:] += data[j]
+            C[:] += data[j]
         for j in range(1, num_processes):
-            comm.Send(AB_glob, dest=j)
+            comm.Send(C, dest=j)
     else:
-        comm.Recv(AB_glob, source=0)
+        comm.Recv(C, source=0)
 
-    AB_glob = np.reshape(AB_glob, np.shape(tmp))
-
-    np.copyto(C, AB_glob)
+    C = np.reshape(C, np.shape(tmp))
 
     return C
 
