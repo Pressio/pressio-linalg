@@ -17,8 +17,8 @@ using scalar_t  = double;
 using py_c_arr  = pybind11::array_t<scalar_t, pybind11::array::c_style>;
 using py_f_arr  = pybind11::array_t<scalar_t, pybind11::array::f_style>;
 
-// Simple function to serial bindings
-std::string _myfunc(py_f_arr vec) {
+// Simple function to test which backend is in use
+std::string _backend_id(py_f_arr vec) {
   std::string status = "Using C++ bindings";
   return status;
 }
@@ -54,7 +54,7 @@ PYBIND11_MODULE(MODNAME, mParent)
     throw py::error_already_set();
   }
 
-  mParent.def("_myfunc", &_myfunc);
+  mParent.def("_backend_id", &_backend_id);
   mParent.def("_print_comm",
               [](py::object py_comm) {
                 auto comm_ptr = get_mpi_comm(py_comm);

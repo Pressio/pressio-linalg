@@ -13,9 +13,9 @@ if os.environ.get("PRESSIO_LINALG_CPP"):
     python_only = False
 
 # TESTING MYFUNC (makes sure install process worked)
-def test_myfunc():
+def test_backend_id():
     vector = np.arange(1,10)
-    func = myfunc(vector)
+    func = backend_id(vector)
     print(f"Output: {func}")
     if python_only:
         assert func == "Using only Python"
@@ -34,5 +34,5 @@ def test_print_comm():
     assert ftn_address == comm_address, f"{ftn_address} != {comm_address}"
 
 if __name__ == "__main__":
-    test_myfunc()
+    test_backend_id()
     test_print_comm()
