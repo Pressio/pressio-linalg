@@ -65,19 +65,13 @@ jobs:
           echo $GITHUB_WORKSPACE
           git status
 
-      - name: Install and test package (Light mode)
+      - name: Install package (Light mode)
         run: |
           echo $PWD
           python -m pip install --upgrade pip
           pip list
           pip install .
-          mpirun -n 3 python -m pytest tests/* --with-mpi
 
-      - name: Install and test package (C++ Bindings)
+      - name: Test package (MPI, n=3)
         run: |
-          echo $PWD
-          python -m pip install --upgrade pip
-          pip list
-          echo "PRESSIO_LINALG_CPP=1" >> $GITHUB_ENV
-          pip install .
           mpirun -n 3 python -m pytest tests/* --with-mpi

@@ -150,34 +150,3 @@ def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm):
     ## sort by singular values
     ordering = np.argsort(sigma)[::-1]
     return U[:, ordering], sigma[ordering]
-
-
-# ----------------------------------------------------
-# ----------------------------------------------------
-def _basic_backend_id_via_python(vec):
-    status = "Using only Python"
-    return status
-
-def _basic_print_comm(comm):
-    print("Python received comm")
-    return MPI._addressof(comm)
-
-
-##############
-### import ###
-##############
-try:
-    from ._linalg import _backend_id, _print_comm
-    backend_id = _backend_id
-    print_comm = _print_comm
-    # max = _max
-    # min = _min
-    # At_dot_b = _At_dot_b
-    # svd_method_of_snapshots = _svd_methods_of_snapshots
-except ImportError as e:
-    backend_id = _basic_backend_id_via_python
-    print_comm = _basic_print_comm
-    # max = _basic_max_via_python
-    # min = _basic_min_via_python
-    # At_dot_b = _basic_product_via_python
-    # svd_method_of_snapshots = _basic_svd_method_of_snapshots_impl_via_python
