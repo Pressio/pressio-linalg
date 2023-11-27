@@ -2,6 +2,16 @@
 
 # pressio-linalg
 
+```
+git clone https://github.com/Pressio/pressio-linalg.git
+cd pressio-linalg
+pip install .
+```
+
+This currently installs the library such that all kernels are implemented with pure python calls and calls to MPI. 
+Therefore, all the communication is handled explicitly internally and we do not rely on any external backend.
+
+
 <!-- ---
 
 ## Installation
