@@ -7,52 +7,72 @@ from mpi4py import MPI
 from pressiolinalg.linalg import _basic_product_via_python
 
 
-def distribute_array(global_array, comm):
-    '''Distribute an array among all processes.'''
-    num_processes = comm.Get_size()
-
-    n_rows, n_cols = global_array.shape
-
-    n_local_rows = n_rows // num_processes
-    local_array = np.zeros((n_local_rows, n_cols), dtype=float)
-
-    comm.Scatter(global_array, local_array, root=0)
-
-    return local_array
-
-# def run_product(A, B, comm):
-#     rank = comm.Get_rank()
-
-#     A_dist = distribute_array(A, comm)
-#     B_dist = distribute_array(B, comm)
-
-#     dot_result = _basic_product_via_python(A_dist, B_dist, comm)
-
-#     if rank == 0:
-#         dot_expected = np.dot(A.transpose(), B)
-#         return dot_result, dot_expected
-
-#     else:
-#         return None, None
-
-def test_basic_product_via_python_gram():
-    '''Tests 2A^T 3A where A is row-distributed'''
+def test_basic_product_via_python_mat_mat():
+    '''Tests 2A^T A where A is row-distributed'''
     comm = MPI.COMM_WORLD
     num_processes = comm.Get_size()
     rank = comm.Get_rank()
 
-    m = num_processes*2
+    n_rows = num_processes * 2
+    n_cols = 3
+    n_local_rows = n_rows // num_processes
+
+    A = np.random.rand(n_rows, n_cols)
+    A = comm.bcast(A, root=0)
+
+    A_dist = np.zeros((n_local_rows, n_cols))
+    comm.Scatter(A, A_dist, root=0)
+    C = np.zeros((n_cols,n_cols))
+
+    _basic_product_via_python("T", "N", 2, A_dist, A_dist, 0, C, comm)   # 2A^T A
+    expected = np.dot(2*A.transpose(), A)
+
+    assert np.allclose(C, expected)
+
+def test_basic_product_via_python_constraints():
+    comm = MPI.COMM_WORLD
+    num_processes = comm.Get_size()
+    rank = comm.Get_rank()
+
+    m = 2
     n = 3
+    l = 4
 
-    A = np.random.rand(m, n)
-    A_dist = distribute_array(A, comm)
-    C = np.zeros((n,n))
+    A = np.random.rand(m,n)
 
-    _basic_product_via_python("T", "N", 2, A_dist, A_dist, 3, C, comm) # 2A^T 3A
+    B1 = np.random.rand(m,l) # should be (n,l)
+    C1 = np.zeros((m,l))
 
-    if rank == 0:
-        gram_expected = np.dot(2*A.transpose(), 3*A)
-        assert np.allclose(C, gram_expected)
+    B2 = np.random.rand(n,l)
+    C2 = np.zeros((m,n))     # should be (m,l)
+
+    try:
+        _basic_product_via_python("Transpose", "N", 1, A, B2, 1, C1, comm)
+    except ValueError as e:
+        assert str(e) == f"flagA not recognized; use either 'N' or 'T'"
+
+    try:
+        _basic_product_via_python("N", "Transpose", 1, A, B2, 1, C1, comm)
+    except ValueError as e:
+        assert str(e) == f"flagB not recognized; use either 'N' or 'T'"
+
+    try:
+        _basic_product_via_python("N", "N", 1, A, B1, 1, C1, comm)
+    except ValueError as e:
+        assert str(e) == f"Invalid input array size. For A (m x n), B must be (n x l)."
+
+    try:
+        _basic_product_via_python("N", "N", 1, A, B2, 1, C2, comm)
+    except ValueError as e:
+        assert str(e) == f"Size of output array C ({np.shape(C2)}) is invalid. For A (m x n) and B (n x l), C has dimensions (m x l))."
+
+    a = np.random.rand(m)
+
+    try:
+        _basic_product_via_python("N", "N", 1, a, B2, 1, C1, comm)
+    except ValueError as e:
+        assert str(e) == f"This operation currently supports rank-2 tensors."
 
 if __name__ == "__main__":
-    test_basic_product_via_python_gram()
+    test_basic_product_via_python_mat_mat()
+    test_basic_product_via_python_constraints()

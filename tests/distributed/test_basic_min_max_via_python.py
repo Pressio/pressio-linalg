@@ -43,14 +43,12 @@ def _min_max_setup(operation, comm):
 def test_basic_max_via_python():
     comm = MPI.COMM_WORLD
     result, expected = _min_max_setup("max", comm)
-    if comm.Get_rank() == 0:
-        assert result == expected
+    assert result == expected
 
 def test_basic_min_via_python():
     comm = MPI.COMM_WORLD
     result, expected_min = _min_max_setup("min", comm)
-    if comm.Get_rank() == 0:
-        assert result == expected_min
+    assert result == expected_min
 
 
 if __name__ == "__main__":
