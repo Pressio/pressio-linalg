@@ -44,10 +44,10 @@ def myname():
   return "pressiolinalg"
 
 def myversion():
-  return "0.1.0rc1"
+  return "0.1.0rc2"
 
 def description():
-  with open(os.path.join(topdir, "README.md"), encoding="utf-8") as f:
+  with open(os.path.join(topdir, "DESCRIPTION.rst")) as f:
     return f.read()
 
 # ----------------------------------------------
