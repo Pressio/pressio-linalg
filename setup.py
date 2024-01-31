@@ -44,7 +44,7 @@ def myname():
   return "pressiolinalg"
 
 def myversion():
-  return "0.1.0"
+  return "0.1.0rc"
 
 # def description():
 #   with open(os.path.join(topdir, 'DESCRIPTION.rst')) as f:
