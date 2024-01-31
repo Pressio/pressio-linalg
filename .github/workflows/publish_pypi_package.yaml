@@ -1,4 +1,4 @@
-name: Publish Python package to PyPi
+name: Publish Python package to TestPyPi
 
 on: push
 
@@ -19,10 +19,11 @@ jobs:
         run: |
           python -m build --sdist --wheel --outdir dist/ .
       - name: Publish package
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
           verbose: true
           print-hash: true

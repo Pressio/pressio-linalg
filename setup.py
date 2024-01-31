@@ -46,9 +46,9 @@ def myname():
 def myversion():
   return "0.1.0"
 
-def description():
-  with open(os.path.join(topdir, 'DESCRIPTION.rst')) as f:
-    return f.read()
+# def description():
+#   with open(os.path.join(topdir, 'DESCRIPTION.rst')) as f:
+#     return f.read()
 
 # ----------------------------------------------
 # Trilinos build for serial
@@ -332,7 +332,7 @@ def run_setup():
     version=myversion(),
     author_email="TBD",
     description="bla bla",
-    long_description=description(),
+    long_description="something",
     ext_modules=ext_modules,
     cmdclass=cmdclass,
     install_requires=["numpy", "scipy", "pyyaml", "pytest", "pytest-mpi"],
