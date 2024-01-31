@@ -330,7 +330,7 @@ def run_setup():
   setup(
     name=myname(),
     version=myversion(),
-    author_email="TBD",
+    author_email="francesco.rizzi@ng-analytics.com",
     description="bla bla",
     long_description="something",
     ext_modules=ext_modules,
