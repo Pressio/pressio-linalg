@@ -13,7 +13,7 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install as _install
 
-topdir = os.path.abspath(os.path.dirname(__file__))
+topdir = os.path.dirname(os.path.abspath(__file__))
 
 pressio_python_only = True
 pressio_cpp_bindings = False
@@ -44,11 +44,11 @@ def myname():
   return "pressiolinalg"
 
 def myversion():
-  return "0.1.0rc"
+  return "0.1.0rc1"
 
-# def description():
-#   with open(os.path.join(topdir, 'DESCRIPTION.rst')) as f:
-#     return f.read()
+def description():
+  with open(os.path.join(topdir, "README.md"), encoding="utf-8") as f:
+    return f.read()
 
 # ----------------------------------------------
 # Trilinos build for serial
@@ -331,8 +331,8 @@ def run_setup():
     name=myname(),
     version=myversion(),
     author_email="francesco.rizzi@ng-analytics.com",
-    description="bla bla",
-    long_description="something",
+    description="Parallel linear algebra library",
+    long_description=description(),
     ext_modules=ext_modules,
     cmdclass=cmdclass,
     install_requires=["numpy", "scipy", "pyyaml", "pytest", "pytest-mpi"],
