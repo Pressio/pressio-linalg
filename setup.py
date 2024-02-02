@@ -44,7 +44,8 @@ def myname():
   return "pressiolinalg"
 
 def myversion():
-  return "0.1.0rc2"
+  with open(os.path.join(topdir, "version.txt")) as f:
+    return f.read()
 
 def description():
   with open(os.path.join(topdir, "DESCRIPTION.rst")) as f:
