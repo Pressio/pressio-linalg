@@ -1,12 +1,17 @@
 import numpy as np
 import random
 
-import mpi4py
-from mpi4py import MPI
+import pytest
+try:
+    import mpi4py
+    from mpi4py import MPI
+except ModuleNotFoundError:
+    print("module 'mpi4py' is not installed")
 
 from pressiolinalg.linalg import _basic_product_via_python
 
 
+@pytest.mark.mpi(min_size=3)
 def test_basic_product_via_python_mat_mat():
     '''Tests 2A^T A where A is row-distributed'''
     comm = MPI.COMM_WORLD
@@ -38,41 +43,56 @@ def test_basic_product_via_python_constraints():
     n = 3
     l = 4
 
-    A = np.random.rand(m,n)
+    A_corr = np.random.rand(m,n)
 
-    B1 = np.random.rand(m,l) # should be (n,l)
-    C1 = np.zeros((m,l))
+    B_corr = np.random.rand(n,l)
+    C_corr = np.zeros((m,l))
 
-    B2 = np.random.rand(n,l)
-    C2 = np.zeros((m,n))     # should be (m,l)
+    B_wrong = np.random.rand(m,l) # should be (n,l)
+    C_wrong = np.zeros((m,n))     # should be (m,l)
 
     try:
-        _basic_product_via_python("Transpose", "N", 1, A, B2, 1, C1, comm)
+        _basic_product_via_python("Transpose", "N", 1, A_corr, B_corr, 1, C_corr, comm)
     except ValueError as e:
         assert str(e) == f"flagA not recognized; use either 'N' or 'T'"
 
     try:
-        _basic_product_via_python("N", "Transpose", 1, A, B2, 1, C1, comm)
+        _basic_product_via_python("N", "Transpose", 1, A_corr, B_corr, 1, C_corr, comm)
     except ValueError as e:
         assert str(e) == f"flagB not recognized; use either 'N' or 'T'"
 
     try:
-        _basic_product_via_python("N", "N", 1, A, B1, 1, C1, comm)
+        _basic_product_via_python("N", "N", 1, A_corr, B_wrong, 1, C_corr, comm)
     except ValueError as e:
         assert str(e) == f"Invalid input array size. For A (m x n), B must be (n x l)."
 
     try:
-        _basic_product_via_python("N", "N", 1, A, B2, 1, C2, comm)
+        _basic_product_via_python("N", "N", 1, A_corr, B_corr, 1, C_wrong, comm)
     except ValueError as e:
-        assert str(e) == f"Size of output array C ({np.shape(C2)}) is invalid. For A (m x n) and B (n x l), C has dimensions (m x l))."
+        assert str(e) == f"Size of output array C ({np.shape(C_wrong)}) is invalid. For A (m x n) and B (n x l), C has dimensions (m x l))."
 
-    a = np.random.rand(m)
+    a_vec = np.random.rand(m)
 
     try:
-        _basic_product_via_python("N", "N", 1, a, B2, 1, C1, comm)
+        _basic_product_via_python("N", "N", 1, a_vec, B_corr, 1, C_corr, comm)
     except ValueError as e:
         assert str(e) == f"This operation currently supports rank-2 tensors."
+
+def test_basic_product_serial():
+    '''Tests 2A^T A'''
+
+    n_rows = 6
+    n_cols = 3
+
+    A = np.random.rand(n_rows, n_cols)
+    C = np.zeros((n_cols,n_cols))
+
+    _basic_product_via_python("T", "N", 2, A, A, 0, C)
+    expected = np.dot(2*A.transpose(), A)
+
+    assert np.allclose(C, expected)
 
 if __name__ == "__main__":
     test_basic_product_via_python_mat_mat()
     test_basic_product_via_python_constraints()
+    test_basic_max_serial()

@@ -5,17 +5,15 @@ https://stackoverflow.com/questions/47599162/pybind11-how-to-package-c-and-pytho
 '''
 
 import numpy as np
-import mpi4py
-from mpi4py import MPI
 
 # ----------------------------------------------------
-def _basic_max_via_python(vec, comm):
+def _basic_max_via_python(vec, comm=None):
     '''
     Finds the maximum of a distributed vector.
 
     Args:
         vec (np.array): Local vector
-        comm (MPI_Comm): MPI communicator
+        comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
         float: The maximum of the vector, returned to all processes.
@@ -24,27 +22,28 @@ def _basic_max_via_python(vec, comm):
     if (dim != 1):
         raise ValueError("This operation is currently supported only for a rank-1 array.")
 
-    mpi_rank = comm.Get_rank()
-    num_processes = comm.Get_size()
+    if comm and comm.Get_size() > 1:
+        import mpi4py
+        from mpi4py import MPI
 
-    if num_processes == 1:
+        local_max = np.max(vec)
+        global_max = np.zeros(1, dtype=vec.dtype)
+
+        comm.Allreduce(local_max, global_max, op=MPI.MAX)
+
+        return global_max[0]
+
+    else:
         return np.max(vec)
 
-    local_max = np.max(vec)
-    global_max = np.zeros(1, dtype=vec.dtype)
-
-    comm.Allreduce(local_max, global_max, op=MPI.MAX)
-
-    return global_max[0]
-
 # ----------------------------------------------------
-def _basic_min_via_python(vec, comm):
+def _basic_min_via_python(vec, comm=None):
     '''
     Finds the minimum of a distributed vector.
 
     Args:
         vec (np.array): Local vector
-        comm (MPI_Comm): MPI communicator
+        comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
         float: The minimum of the vector, returned to all processes.
@@ -53,21 +52,22 @@ def _basic_min_via_python(vec, comm):
     if (dim != 1):
         raise ValueError("This operation is currently supported only for a rank-1 array.")
 
-    mpi_rank = comm.Get_rank()
-    num_processes = comm.Get_size()
+    if comm and comm.Get_size() > 1:
+        import mpi4py
+        from mpi4py import MPI
 
-    if num_processes == 1:
+        local_min = np.min(vec)
+        global_min = np.zeros(1, dtype=vec.dtype)
+
+        comm.Allreduce(local_min, global_min, op=MPI.MIN)
+
+        return global_min[0]
+
+    else:
         return np.min(vec)
 
-    local_min = np.min(vec)
-    global_min = np.zeros(1, dtype=vec.dtype)
-
-    comm.Allreduce(local_min, global_min, op=MPI.MIN)
-
-    return global_min[0]
-
 # ----------------------------------------------------
-def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm):
+def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
     '''
     Computes C = beta*C + alpha*op(A)*op(B), where A and B are row-distributed matrices.
 
@@ -78,15 +78,12 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm):
         A (np.array): 2-D matrix
         B (np.array): 2-D matrix
         beta (float): Coefficient of C.
-        C (np.array): 2-D matrix to be overwritten with the product
-        comm (MPI_Comm): MPI communicator
+        C (np.array): 2-D matrix to be filled with the product
+        comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
         C (np.array): The specified product
     '''
-    mpi_rank = comm.Get_rank()
-    num_processes = comm.Get_size()
-
     if flagA == "N":
         mat1 = A * alpha
     elif flagA == "T":
@@ -115,15 +112,11 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm):
     if (mat1.ndim != 2) | (mat2.ndim != 2):
         raise ValueError(f"This operation currently supports rank-2 tensors.")
 
-    if num_processes == 1:
-        product = np.dot(mat1, mat2)
-        if beta == 0:
-            np.copyto(C, product)
-        else:
-            new_C = beta * C + product
-            np.copyto(C, new_C)
+    if comm and comm.Get_size() > 1:
 
-    else:
+        import mpi4py
+        from mpi4py import MPI
+
         local_product = np.dot(mat1, mat2)
         global_product = np.zeros_like(C, dtype=local_product.dtype)
         comm.Allreduce(local_product, global_product, op=MPI.SUM)
@@ -133,30 +126,39 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm):
             new_C = beta * C + global_product
             np.copyto(C, new_C)
 
+    else:
+        product = np.dot(mat1, mat2)
+        if beta == 0:
+            np.copyto(C, product)
+        else:
+            new_C = beta * C + product
+            np.copyto(C, new_C)
+
     return
 
 # ----------------------------------------------------
-def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm):
+def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm=None):
     '''
     Performs SVD via method of snapshots.
 
     Args:
         snapshots (np.array): Distributed array of snapshots
-        comm (MPI_Comm): MPI communicator
+        comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
         U (np.array): Phi, or modes; a numpy array where each column is a POD mode
         sigma (float): Energy; the energy associated with each mode (singular values)
     '''
-    STS = np.zeros((np.shape(snapshots)[1], np.shape(snapshots)[1]))
-    _basic_product_via_python("T", "N", 1, snapshots, snapshots, 0, STS, comm)
-    Lam,E = np.linalg.eig(STS)
-    sigma = np.sqrt(Lam)
-    U = np.zeros(np.shape(snapshots))
-    U[:] = np.dot(snapshots, np.dot(E, np.diag(1./sigma)))
+    gram_matrix = np.zeros((np.shape(snapshots)[1], np.shape(snapshots)[1]))
+    _basic_product_via_python("T", "N", 1, snapshots, snapshots, 0, gram_matrix, comm)
+    eigenvalues,eigenvectors = np.linalg.eig(gram_matrix)
+    sigma = np.sqrt(eigenvalues)
+    modes = np.zeros(np.shape(snapshots))
+    modes[:] = np.dot(snapshots, np.dot(eigenvectors, np.diag(1./sigma)))
     ## sort by singular values
     ordering = np.argsort(sigma)[::-1]
-    return U[:, ordering], sigma[ordering]
+    print("function modes:", modes[:, ordering])
+    return modes[:, ordering], sigma[ordering]
 
 # ----------------------------------------------------
 # ----------------------------------------------------
