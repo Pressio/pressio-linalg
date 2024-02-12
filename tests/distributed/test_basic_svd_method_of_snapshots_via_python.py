@@ -46,21 +46,16 @@ def test_basic_svd_method_of_snapshots_impl_via_python():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     num_processes = comm.Get_size()
-
     global_snapshots, local_snapshots = create_snapshots(comm)
-    local_modes, s_mpi = _basic_svd_method_of_snapshots_impl_via_python(local_snapshots, comm)
+    local_modes, mpi_sigma = _basic_svd_method_of_snapshots_impl_via_python(local_snapshots, comm)
 
-    if rank == 0:
-        # Gather on rank 0
-        gathered_modes = np.empty(3).T
-        comm.Gather(local_modes, gathered_modes)
+    # Get serial solution
+    test_modes, test_sigma = get_serial_solution(global_snapshots)
 
-        # Get serial solution
-        test_modes, test_sigma = get_serial_solution(global_snapshots)
+    # Compare values
+    assert np.allclose(local_modes, test_modes[rank])
+    assert mpi_sigma == test_sigma
 
-        # Compare values
-        assert np.allclose(gathered_modes, test_modes)
-        assert mpi_sigma == test_sigma
 
 def test_basic_svd_serial():
     snapshots = np.array([np.arange(0, 3)]).transpose()
@@ -72,3 +67,4 @@ def test_basic_svd_serial():
 
 if __name__ == "__main__":
     test_basic_svd_method_of_snapshots_impl_via_python()
+    test_basic_svd_serial()
