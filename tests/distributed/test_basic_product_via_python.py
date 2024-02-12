@@ -1,12 +1,17 @@
 import numpy as np
 import random
 
-import mpi4py
-from mpi4py import MPI
+import pytest
+try:
+    import mpi4py
+    from mpi4py import MPI
+except ModuleNotFoundError:
+    print("module 'mpi4py' is not installed")
 
 from pressiolinalg.linalg import _basic_product_via_python
 
 
+@pytest.mark.mpi(min_size=3)
 def test_basic_product_via_python_mat_mat():
     '''Tests 2A^T A where A is row-distributed'''
     comm = MPI.COMM_WORLD
@@ -29,6 +34,7 @@ def test_basic_product_via_python_mat_mat():
 
     assert np.allclose(C, expected)
 
+@pytest.mark.mpi(min_size=3)
 def test_basic_product_via_python_constraints():
     comm = MPI.COMM_WORLD
     num_processes = comm.Get_size()

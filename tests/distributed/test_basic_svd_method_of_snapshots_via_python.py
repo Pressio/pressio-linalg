@@ -1,7 +1,11 @@
 import numpy as np
 
-import mpi4py
-from mpi4py import MPI
+import pytest
+try:
+    import mpi4py
+    from mpi4py import MPI
+except ModuleNotFoundError:
+    print("module 'mpi4py' is not installed")
 
 from pressiolinalg.linalg import _basic_svd_method_of_snapshots_impl_via_python
 
@@ -24,6 +28,7 @@ def create_snapshots(comm):
     local_snapshots = distribute_array(global_snapshots, comm)
     return global_snapshots, local_snapshots
 
+@pytest.mark.mpi(min_size=3)
 def test_basic_svd_method_of_snapshots_impl_via_python():
     # Solve in parallel
     comm = MPI.COMM_WORLD

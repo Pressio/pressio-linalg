@@ -72,6 +72,10 @@ jobs:
           pip list
           pip install .
 
+      - name: Test package (Serial)
+        run: |
+          pytest
+
       - name: Test package (MPI, n=3)
         run: |
           mpirun -n 3 python -m pytest tests/* --with-mpi
