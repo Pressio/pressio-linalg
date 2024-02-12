@@ -336,7 +336,7 @@ def run_setup():
     long_description=description(),
     ext_modules=ext_modules,
     cmdclass=cmdclass,
-    install_requires=["numpy", "scipy", "pyyaml", "pytest", "pytest-mpi"],
+    install_requires=["numpy", "scipy", "pytest-mpi", "pytest"],
     zip_safe=False,
 
     python_requires='>=3',
