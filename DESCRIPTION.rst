@@ -1,4 +1,4 @@
-pressiolinalg: Parallel Linear Algebra
+pressio-linalg: Parallel Linear Algebra
 ======================================
 
 This library offers basic linear algebra functions that can be implemented in parallel.
@@ -12,6 +12,6 @@ To install, use the following command:
 
 .. code-block:: bash
 
-  pip install pressiolinalg
+  pip install pressio-linalg
 
 With this installation, all kernels are implemented with pure Python calls and calls to MPI. This ensures that all the communication is handled explicitly internally and we do not rely on any external backend.

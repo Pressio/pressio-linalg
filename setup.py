@@ -41,7 +41,7 @@ if os.environ.get("PRESSIO_LINALG_FIND_TRILINOS"):
 # Metadata
 # ----------------------------------------------
 def myname():
-  return "pressiolinalg"
+  return "pressio-linalg"
 
 def myversion():
   with open(os.path.join(topdir, "version.txt")) as f:
