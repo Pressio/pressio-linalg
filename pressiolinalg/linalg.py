@@ -78,7 +78,7 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
         A (np.array): 2-D matrix
         B (np.array): 2-D matrix
         beta (float): Coefficient of C.
-        C (np.array): 2-D matrix to be overwritten with the product
+        C (np.array): 2-D matrix to be filled with the product
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
@@ -149,15 +149,16 @@ def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm=None):
         U (np.array): Phi, or modes; a numpy array where each column is a POD mode
         sigma (float): Energy; the energy associated with each mode (singular values)
     '''
-    STS = np.zeros((np.shape(snapshots)[1], np.shape(snapshots)[1]))
-    _basic_product_via_python("T", "N", 1, snapshots, snapshots, 0, STS, comm)
-    Lam,E = np.linalg.eig(STS)
-    sigma = np.sqrt(Lam)
-    U = np.zeros(np.shape(snapshots))
-    U[:] = np.dot(snapshots, np.dot(E, np.diag(1./sigma)))
+    gram_matrix = np.zeros((np.shape(snapshots)[1], np.shape(snapshots)[1]))
+    _basic_product_via_python("T", "N", 1, snapshots, snapshots, 0, gram_matrix, comm)
+    eigenvalues,eigenvectors = np.linalg.eig(gram_matrix)
+    sigma = np.sqrt(eigenvalues)
+    modes = np.zeros(np.shape(snapshots))
+    modes[:] = np.dot(snapshots, np.dot(eigenvectors, np.diag(1./sigma)))
     ## sort by singular values
     ordering = np.argsort(sigma)[::-1]
-    return U[:, ordering], sigma[ordering]
+    print("function modes:", modes[:, ordering])
+    return modes[:, ordering], sigma[ordering]
 
 # ----------------------------------------------------
 # ----------------------------------------------------

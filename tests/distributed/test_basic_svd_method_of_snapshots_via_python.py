@@ -20,23 +20,25 @@ def distribute_array(global_array, comm):
 
     comm.Scatter(global_array, local_array, root=0)
 
+    print(f"comm {comm.Get_rank()}: {local_array}")
+
     return local_array
 
 def create_snapshots(comm):
     num_processes = comm.Get_size()
-    global_snapshots = np.array([np.arange(0, num_processes)]).transpose()
+    global_snapshots = np.array([np.arange(0, num_processes)]).T
+    print(f"Global snapshots: {global_snapshots}")
     local_snapshots = distribute_array(global_snapshots, comm)
     return global_snapshots, local_snapshots
 
-def get_solution(snapshots):
-    dot_product = np.dot(snapshots.transpose(), snapshots)
-    Lam,E = np.linalg.eig(dot_product)
-    sigma = np.sqrt(Lam)
-    U = np.zeros(np.shape(snapshots))
-    U[:] = np.dot(snapshots, np.dot(E, np.diag(1./sigma)))
+def get_serial_solution(snapshots):
+    gram_matrix = np.dot(snapshots.T, snapshots)
+    eigenvalues, eigenvectors = np.linalg.eig(gram_matrix)
+    sigma = np.sqrt(eigenvalues)
+    modes = np.zeros(np.shape(snapshots))
+    modes[:] = np.dot(snapshots, np.dot(eigenvectors, np.diag(1./sigma)))
     ordering = np.argsort(sigma)[::-1]
-
-    return U[:, ordering], sigma[ordering]
+    return modes[:, ordering], sigma[ordering]
 
 @pytest.mark.mpi(min_size=3)
 def test_basic_svd_method_of_snapshots_impl_via_python():
@@ -46,22 +48,26 @@ def test_basic_svd_method_of_snapshots_impl_via_python():
     num_processes = comm.Get_size()
 
     global_snapshots, local_snapshots = create_snapshots(comm)
-    U, s = _basic_svd_method_of_snapshots_impl_via_python(local_snapshots, comm)
+    local_modes, s_mpi = _basic_svd_method_of_snapshots_impl_via_python(local_snapshots, comm)
 
     if rank == 0:
-        # Solve in serial
-        U_test, s_test = get_solution(global_snapshots)
+        # Gather on rank 0
+        gathered_modes = np.empty(3).T
+        comm.Gather(local_modes, gathered_modes)
+
+        # Get serial solution
+        test_modes, test_sigma = get_serial_solution(global_snapshots)
 
         # Compare values
-        assert np.allclose(U, U_test)
-        assert s == s_test
+        assert np.allclose(gathered_modes, test_modes)
+        assert mpi_sigma == test_sigma
 
 def test_basic_svd_serial():
     snapshots = np.array([np.arange(0, 3)]).transpose()
-    U, s = _basic_svd_method_of_snapshots_impl_via_python(snapshots)
-    U_test, s_test = get_solution(snapshots)
-    assert np.allclose(U, U_test)
-    assert s == s_test
+    modes, sigma = _basic_svd_method_of_snapshots_impl_via_python(snapshots)
+    test_modes, test_sigma = get_serial_solution(snapshots)
+    assert np.allclose(modes, test_modes)
+    assert sigma == test_sigma
 
 
 if __name__ == "__main__":
