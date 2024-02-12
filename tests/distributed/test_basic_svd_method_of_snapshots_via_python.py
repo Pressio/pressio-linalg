@@ -28,6 +28,16 @@ def create_snapshots(comm):
     local_snapshots = distribute_array(global_snapshots, comm)
     return global_snapshots, local_snapshots
 
+def get_solution(snapshots):
+    dot_product = np.dot(snapshots.transpose(), snapshots)
+    Lam,E = np.linalg.eig(dot_product)
+    sigma = np.sqrt(Lam)
+    U = np.zeros(np.shape(snapshots))
+    U[:] = np.dot(snapshots, np.dot(E, np.diag(1./sigma)))
+    ordering = np.argsort(sigma)[::-1]
+
+    return U[:, ordering], sigma[ordering]
+
 @pytest.mark.mpi(min_size=3)
 def test_basic_svd_method_of_snapshots_impl_via_python():
     # Solve in parallel
@@ -40,18 +50,18 @@ def test_basic_svd_method_of_snapshots_impl_via_python():
 
     if rank == 0:
         # Solve in serial
-        dot_product = np.dot(global_snapshots.transpose(), global_snapshots)
-        Lam,E = np.linalg.eig(dot_product)
-        sigma = np.sqrt(Lam)
-        U = np.zeros(np.shape(global_snapshots))
-        U[:] = np.dot(global_snapshots, np.dot(E, np.diag(1./sigma)))
-        ordering = np.argsort(sigma)[::-1]
-        U_serial = U[:, ordering]
-        sigma_serial = sigma[ordering]
+        U_test, s_test = get_solution(global_snapshots)
 
         # Compare values
-        assert np.allclose(U_serial, U)
-        assert sigma_serial == sigma
+        assert np.allclose(U, U_test)
+        assert s == s_test
+
+def test_basic_svd_serial():
+    snapshots = np.array([np.arange(0, 3)]).transpose()
+    U, s = _basic_svd_method_of_snapshots_impl_via_python(snapshots)
+    U_test, s_test = get_solution(snapshots)
+    assert np.allclose(U, U_test)
+    assert s == s_test
 
 
 if __name__ == "__main__":

@@ -79,6 +79,21 @@ def test_basic_product_via_python_constraints():
     except ValueError as e:
         assert str(e) == f"This operation currently supports rank-2 tensors."
 
+def test_basic_product_serial():
+    '''Tests 2A^T A'''
+
+    n_rows = 6
+    n_cols = 3
+
+    A = np.random.rand(n_rows, n_cols)
+    C = np.zeros((n_cols,n_cols))
+
+    _basic_product_via_python("T", "N", 2, A, A, 0, C, comm)
+    expected = np.dot(2*A.transpose(), A)
+
+    assert np.allclose(C, expected)
+
 if __name__ == "__main__":
     test_basic_product_via_python_mat_mat()
     test_basic_product_via_python_constraints()
+    test_basic_max_serial()

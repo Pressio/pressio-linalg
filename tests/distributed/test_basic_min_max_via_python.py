@@ -56,7 +56,17 @@ def test_basic_min_via_python():
     result, expected_min = _min_max_setup("min", comm)
     assert result == expected_min
 
+def test_basic_max_serial():
+    vector = np.random.rand(10)
+    assert _basic_max_via_python(vector) == np.max(vector)
+
+def test_basic_min_serial():
+    vector = np.random.rand(10)
+    assert _basic_min_via_python(vector) == np.min(vector)
+
 
 if __name__ == "__main__":
     test_basic_max_via_python()
     test_basic_min_via_python()
+    test_basic_max_serial()
+    test_basic_min_serial()
