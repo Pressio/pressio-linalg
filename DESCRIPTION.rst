@@ -1,12 +1,12 @@
 pressio-linalg: Parallel Linear Algebra
 ======================================
 
-This library offers basic linear algebra functions that can be implemented in parallel.
+This Python library offers basic linear algebra functions that can be implemented in parallel.
 
 Install
 -------
 
-This library is tested on Python 3.8-3.11.
+pressio-linalg is tested on Python 3.8-3.11.
 
 To install, use the following command:
 

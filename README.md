@@ -15,7 +15,7 @@ Therefore, all the communication is handled explicitly internally and we do not 
 
 ## Installation
 
-This library is tested on Python 3.8-3.11.
+`pressio-linalg` is tested on Python 3.8-3.11.
 
 To install, use the following command:
 
