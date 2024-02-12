@@ -1,5 +1,5 @@
 pressio-linalg: Parallel Linear Algebra
-======================================
+=======================================
 
 This Python library offers basic linear algebra functions that can be implemented in parallel.
 
