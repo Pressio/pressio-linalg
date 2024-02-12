@@ -88,7 +88,7 @@ def test_basic_product_serial():
     A = np.random.rand(n_rows, n_cols)
     C = np.zeros((n_cols,n_cols))
 
-    _basic_product_via_python("T", "N", 2, A, A, 0, C, comm)
+    _basic_product_via_python("T", "N", 2, A, A, 0, C)
     expected = np.dot(2*A.transpose(), A)
 
     assert np.allclose(C, expected)
