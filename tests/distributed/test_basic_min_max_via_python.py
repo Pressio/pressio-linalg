@@ -129,9 +129,15 @@ def test_python_max_serial():
     vector = np.random.rand(10)
     assert _basic_max_via_python(vector) == np.max(vector)
 
+    array = np.random.rand(3, 10)
+    assert _basic_max_via_python(array) == np.max(array)
+
 def test_python_min_serial():
     vector = np.random.rand(10)
     assert _basic_min_via_python(vector) == np.min(vector)
+
+    array = np.random.rand(3, 10)
+    assert _basic_min_via_python(array) == np.min(array)
 
 
 if __name__ == "__main__":
