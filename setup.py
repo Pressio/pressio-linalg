@@ -13,7 +13,7 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install as _install
 
-topdir = os.path.abspath(os.path.dirname(__file__))
+topdir = os.path.dirname(os.path.abspath(__file__))
 
 pressio_python_only = True
 pressio_cpp_bindings = False
@@ -41,13 +41,14 @@ if os.environ.get("PRESSIO_LINALG_FIND_TRILINOS"):
 # Metadata
 # ----------------------------------------------
 def myname():
-  return "pressiolinalg"
+  return "pressio-linalg"
 
 def myversion():
-  return "0.1.0"
+  with open(os.path.join(topdir, "version.txt")) as f:
+    return f.read()
 
 def description():
-  with open(os.path.join(topdir, 'DESCRIPTION.rst')) as f:
+  with open(os.path.join(topdir, "DESCRIPTION.rst")) as f:
     return f.read()
 
 # ----------------------------------------------
@@ -330,12 +331,12 @@ def run_setup():
   setup(
     name=myname(),
     version=myversion(),
-    author_email="TBD",
-    description="bla bla",
+    author_email="francesco.rizzi@ng-analytics.com",
+    description="Parallel linear algebra library",
     long_description=description(),
     ext_modules=ext_modules,
     cmdclass=cmdclass,
-    install_requires=["numpy", "scipy", "pyyaml", "pytest", "pytest-mpi"],
+    install_requires=["numpy", "scipy", "pytest-mpi", "pytest"],
     zip_safe=False,
 
     python_requires='>=3',
