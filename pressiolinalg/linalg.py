@@ -7,64 +7,92 @@ https://stackoverflow.com/questions/47599162/pybind11-how-to-package-c-and-pytho
 import numpy as np
 
 # ----------------------------------------------------
-def _basic_max_via_python(vec, comm=None):
+def _basic_max_via_python(a, axis=None, out=None, comm=None):
     '''
     Finds the maximum of a distributed vector.
 
     Args:
-        vec (np.array): Local vector
+        a (np.ndarray): Local input data
+        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
+        out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        float: The maximum of the vector, returned to all processes.
+        max (np.ndarray or scalar): The maximum of the array, returned to all processes.
     '''
-    dim = vec.ndim
-    if (dim != 1):
-        raise ValueError("This operation is currently supported only for a rank-1 array.")
+    max_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
 
-    if comm and comm.Get_size() > 1:
+    if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
-        local_max = np.max(vec)
-        global_max = np.zeros(1, dtype=vec.dtype)
+        # TO DO: Add support for axis (and out)
+        if axis is not None:
+            raise ValueError("The axis argument is not currently supported.")
+
+        if out is not None:
+            assert len(out.shape) == max_dim, "out must have correct dimensions."
+
+        local_max = np.max(a, axis=axis)
+        global_max = np.zeros(max_dim, dtype=a.dtype)
 
         comm.Allreduce(local_max, global_max, op=MPI.MAX)
 
-        return global_max[0]
+        if out is None:
+            if global_max.shape == 1:
+                return global_max[0]
+            else:
+                return global_max
+        else:
+            np.copyto(out, global_max)
+            return
 
     else:
-        return np.max(vec)
+        return np.max(a, axis=axis, out=out)
 
 # ----------------------------------------------------
-def _basic_min_via_python(vec, comm=None):
+def _basic_min_via_python(a, axis=None, out=None, comm=None):
     '''
     Finds the minimum of a distributed vector.
 
     Args:
-        vec (np.array): Local vector
+        a (np.ndarray): Local input data
+        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
+        out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        float: The minimum of the vector, returned to all processes.
+        min (np.ndarray or scalar): The minimum of the array, returned to all processes.
     '''
-    dim = vec.ndim
-    if (dim != 1):
-        raise ValueError("This operation is currently supported only for a rank-1 array.")
+    min_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
 
-    if comm and comm.Get_size() > 1:
+    if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
-        local_min = np.min(vec)
-        global_min = np.zeros(1, dtype=vec.dtype)
+        # TO DO: Add support for axis (and out)
+        if axis is not None:
+            raise ValueError("The axis argument is not currently supported.")
+
+        if out is not None:
+            assert len(out.shape) == min_dim, "out must have correct dimensions."
+
+        local_min = np.min(a, axis=axis)
+        global_min = np.zeros(min_dim, dtype=a.dtype)
 
         comm.Allreduce(local_min, global_min, op=MPI.MIN)
 
-        return global_min[0]
+        if out is None:
+            if global_min.shape == 1:
+                return global_min[0]
+            else:
+                return global_min
+        else:
+            np.copyto(out, global_min)
+            return
 
     else:
-        return np.min(vec)
+        return np.min(a, axis=axis, out=out)
 
 # ----------------------------------------------------
 def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
@@ -112,8 +140,7 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
     if (mat1.ndim != 2) | (mat2.ndim != 2):
         raise ValueError(f"This operation currently supports rank-2 tensors.")
 
-    if comm and comm.Get_size() > 1:
-
+    if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
