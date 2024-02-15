@@ -11,6 +11,10 @@ except ModuleNotFoundError:
 from pressiolinalg.linalg import _basic_product_via_python
 
 
+########################
+###   Define Tests   ###
+########################
+
 @pytest.mark.mpi(min_size=3)
 def test_basic_product_via_python_mat_mat():
     '''Tests 2A^T A where A is row-distributed'''

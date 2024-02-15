@@ -7,72 +7,18 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
+from pressiolinalg import utils
 from pressiolinalg.linalg import _basic_max_via_python
 from pressiolinalg.linalg import _basic_min_via_python
 
 
-################################################################
-####################### Helper functions #######################
-################################################################
-
-def _distribute_vector(global_vector, comm):
-    num_processes = comm.Get_size()
-
-    local_size = len(global_vector) // num_processes
-    local_vector = np.zeros(local_size, dtype=int)
-
-    comm.Scatter(global_vector, local_vector, root=0)
-
-    return local_vector
-
-def _distribute_array(global_array, comm):
-    num_processes = comm.Get_size()
-
-    dim = len(global_array.shape)
-
-    if dim == 2:
-        rows, cols = global_array.shape
-        local_rows = rows // num_processes
-        local_array = np.zeros((local_rows, cols), dtype=int)
-
-    elif dim == 3:
-        rows, cols, depth = global_array.shape
-        local_rows = rows // num_processes
-        local_array = np.zeros((local_rows, cols, depth), dtype=int)
-
-    else:
-        return None
-
-    comm.Scatter(global_array, local_array, root=0)
-
-    return local_array
-
-def _get_inputs(rank, comm):
-    num_processors = comm.Get_size()
-    if rank == 1:
-        global_arr = np.empty(num_processors * 2, dtype=np.int64)
-        for i in range(num_processors * 2):
-            global_arr[i] = i
-        local_arr = _distribute_vector(global_arr, comm)
-    elif rank == 2:
-        global_arr = np.empty((num_processors * 2, 3), dtype=np.int64)
-        for i in range(num_processors * 2):
-            for j in range(3):
-                global_arr[i][j] = i+j
-        local_arr = _distribute_array(global_arr, comm)
-    elif rank == 3:
-        global_arr = np.empty((num_processors * 2, 3, 4), dtype=np.int64)
-        for i in range(num_processors * 2):
-            for j in range(3):
-                for k in range(4):
-                    global_arr[i][j][k] = i+j+k
-        local_arr = _distribute_array(global_arr, comm)
-
-    return local_arr, global_arr
+########################
+###  Set up problem  ###
+########################
 
 def _min_max_setup(operation, rank, axis=None, out=None, comm=None):
     num_processors = comm.Get_size()
-    local_arr, global_arr = _get_inputs(rank, comm)
+    local_arr, global_arr = utils.get_local_and_global_arrays(rank, comm)
 
     if operation == "min":
         min_result = _basic_min_via_python(local_arr, axis=axis, out=out, comm=comm)
@@ -83,9 +29,10 @@ def _min_max_setup(operation, rank, axis=None, out=None, comm=None):
     else:
         return None, max(global_arr)
 
-###############################################################
-###################### Max and Min Tests ######################
-###############################################################
+
+########################
+###   Define Tests   ###
+########################
 
 @pytest.mark.mpi(min_size=3)
 def test_python_max_vector_mpi():

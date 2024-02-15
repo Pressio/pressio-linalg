@@ -10,25 +10,15 @@ except ModuleNotFoundError:
 from pressiolinalg.linalg import _thin_svd
 
 
-def distribute_array(global_array, comm):
-    '''Distribute an array among processes.'''
-    num_processes = comm.Get_size()
-
-    n_rows, n_cols = global_array.shape
-    n_local_rows = n_rows // num_processes
-    local_array = np.zeros((n_local_rows, n_cols), dtype=int)
-
-    comm.Scatter(global_array, local_array, root=0)
-
-    print(f"comm {comm.Get_rank()}: {local_array}")
-
-    return local_array
+########################
+###  Set up problem  ###
+########################
 
 def create_snapshots(comm):
     num_processes = comm.Get_size()
     global_snapshots = np.array([np.arange(0, num_processes)]).T
     print(f"Global snapshots: {global_snapshots}")
-    local_snapshots = distribute_array(global_snapshots, comm)
+    local_snapshots = utils.distribute_array(global_snapshots, comm)
     return global_snapshots, local_snapshots
 
 def get_serial_solution(snapshots):
@@ -39,6 +29,10 @@ def get_serial_solution(snapshots):
     modes[:] = np.dot(snapshots, np.dot(eigenvectors, np.diag(1./sigma)))
     ordering = np.argsort(sigma)[::-1]
     return modes[:, ordering], sigma[ordering]
+
+########################
+###   Define Tests   ###
+########################
 
 @pytest.mark.mpi(min_size=3)
 def test_basic_svd_method_of_snapshots_impl_via_python():
@@ -55,7 +49,6 @@ def test_basic_svd_method_of_snapshots_impl_via_python():
     # Compare values
     assert np.allclose(local_modes, test_modes[rank])
     assert mpi_sigma == test_sigma
-
 
 def test_basic_svd_serial():
     snapshots = np.array([np.arange(0, 3)]).transpose()

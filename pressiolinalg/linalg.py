@@ -31,7 +31,7 @@ def _basic_max_via_python(a, axis=None, out=None, comm=None):
             raise ValueError("The axis argument is not currently supported.")
 
         if out is not None:
-            assert len(out.shape) == max_dim, "out must have correct dimensions."
+            assert out.ndim == max_dim, "out must have correct dimensions."
 
         local_max = np.max(a, axis=axis)
         global_max = np.zeros(max_dim, dtype=a.dtype)
@@ -39,7 +39,7 @@ def _basic_max_via_python(a, axis=None, out=None, comm=None):
         comm.Allreduce(local_max, global_max, op=MPI.MAX)
 
         if out is None:
-            if global_max.shape == 1:
+            if global_max.ndim == 1:
                 return global_max[0]
             else:
                 return global_max
@@ -75,7 +75,7 @@ def _basic_min_via_python(a, axis=None, out=None, comm=None):
             raise ValueError("The axis argument is not currently supported.")
 
         if out is not None:
-            assert len(out.shape) == min_dim, "out must have correct dimensions."
+            assert out.ndim == min_dim, "out must have correct dimensions."
 
         local_min = np.min(a, axis=axis)
         global_min = np.zeros(min_dim, dtype=a.dtype)
@@ -83,7 +83,7 @@ def _basic_min_via_python(a, axis=None, out=None, comm=None):
         comm.Allreduce(local_min, global_min, op=MPI.MIN)
 
         if out is None:
-            if global_min.shape == 1:
+            if global_min.ndim == 1:
                 return global_min[0]
             else:
                 return global_min
@@ -101,7 +101,7 @@ def _basic_mean_via_python(a, axis=None, dtype=None, out=None, comm=None):
 
     Args:
         a (np.ndarray): Local input data
-        dtype (data-type): Type to use in computing the mean (by default, uses the input dtype)
+        dtype (data-type): Type to use in computing the mean (by default, uses the input dtype, float32 for integer inputs)
         axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
         out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
@@ -121,16 +121,20 @@ def _basic_mean_via_python(a, axis=None, dtype=None, out=None, comm=None):
             raise ValueError("The axis argument is not currently supported.")
 
         if out is not None:
-            assert len(out.shape) == mean_dim, "out must have correct dimensions."
+            assert out.ndim == mean_dim, "out must have correct dimensions."
 
-        local_mean = np.mean(a, dtype=dtype)
-        global_sum = np.zeros(mean_dim, dtype=local_mean.dtype)
+        local_size = np.array([a.size], dtype=int)
+        global_size = np.empty(1, dtype=int)
 
-        comm.Allreduce(local_mean, global_sum, op=MPI.SUM)
-        global_mean = global_sum / n_procs
+        global_sum = np.empty(a.size, dtype=a.dtype)
+
+        comm.Allreduce(local_size, global_size, op=MPI.SUM)
+        comm.Allreduce(a, global_sum, op=MPI.SUM)
+
+        global_mean = np.sum(global_sum) / np.sum(global_size)
 
         if out is None:
-            if len(global_mean.shape) == 1 and global_mean.shape[0] == 1:
+            if global_mean.ndim == 1 and global_mean.shape[0] == 1:
                 return global_mean[0]
             else:
                 return global_mean
@@ -140,6 +144,60 @@ def _basic_mean_via_python(a, axis=None, dtype=None, out=None, comm=None):
 
     else:
         return np.mean(a, axis=axis, dtype=dtype, out=out)
+
+# ----------------------------------------------------
+def _basic_std_via_python(a, axis=None, dtype=None, out=None, ddof=0, comm=None):
+    '''
+    Finds the standard deviation of a distributed array.
+
+    Args:
+        a (np.ndarray): Local input data
+        dtype (data-type): Type to use in computing the standard deviation (by default, uses the input dtype, float32 for integer inputs)
+        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
+        out (np.ndarray): Output array in which to place the result (default: None)
+        ddof (int): Delta degrees of freedom used in divisor N - ddof (default: 0)
+        comm (MPI_Comm): MPI communicator (default: None)
+
+    Returns:
+        mean (np.ndarray or scalar): The mean of the array, returned to all processes.
+    '''
+    if comm is not None and comm.Get_size() > 1:
+        import mpi4py
+        from mpi4py import MPI
+
+        n_procs = comm.Get_size()
+        std_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
+
+        # TO DO: Add support for axis (and out)
+        if axis is not None:
+            raise ValueError("The axis argument is not currently supported.")
+
+        if out is not None:
+            assert out.ndim == std_dim, "out must have correct dimensions."
+
+        # Get total number of elements
+        local_size = np.array([a.size], dtype=int)
+        global_size = np.empty(1, dtype=int)
+        comm.Allreduce(local_size, global_size, op=MPI.SUM)
+
+        # Get standard deviation
+        global_mean = _basic_mean_via_python(a, axis=axis, dtype=dtype, comm=comm)
+        local_sq_diff = np.sum(np.square(a - global_mean))
+        global_sq_diff = np.empty(1, dtype=type(local_sq_diff))
+        comm.Allreduce(local_sq_diff, global_sq_diff, op=MPI.SUM)
+        std_dev = np.sqrt(global_sq_diff[0] / (global_size[0] - ddof))
+
+        if out is None:
+            if std_dev.ndim == 1 and std_dev.shape[0] == 1:
+                return std_dev[0]
+            else:
+                return std_dev
+        else:
+            np.copyto(out, std_dev)
+            return
+
+    else:
+        return np.std(a, axis=axis, dtype=dtype, out=out, ddof=ddof)
 
 # ----------------------------------------------------
 def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
