@@ -95,6 +95,53 @@ def _basic_min_via_python(a, axis=None, out=None, comm=None):
         return np.min(a, axis=axis, out=out)
 
 # ----------------------------------------------------
+def _basic_mean_via_python(a, axis=None, dtype=None, out=None, comm=None):
+    '''
+    Finds the mean of a distributed array.
+
+    Args:
+        a (np.ndarray): Local input data
+        dtype (data-type): Type to use in computing the mean (by default, uses the input dtype)
+        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
+        out (np.ndarray): Output array in which to place the result (default: None)
+        comm (MPI_Comm): MPI communicator (default: None)
+
+    Returns:
+        mean (np.ndarray or scalar): The mean of the array, returned to all processes.
+    '''
+    if comm is not None and comm.Get_size() > 1:
+        import mpi4py
+        from mpi4py import MPI
+
+        n_procs = comm.Get_size()
+        mean_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
+
+        # TO DO: Add support for axis (and out)
+        if axis is not None:
+            raise ValueError("The axis argument is not currently supported.")
+
+        if out is not None:
+            assert len(out.shape) == mean_dim, "out must have correct dimensions."
+
+        local_mean = np.mean(a, dtype=dtype)
+        global_sum = np.zeros(mean_dim, dtype=local_mean.dtype)
+
+        comm.Allreduce(local_mean, global_sum, op=MPI.SUM)
+        global_mean = global_sum / n_procs
+
+        if out is None:
+            if len(global_mean.shape) == 1 and global_mean.shape[0] == 1:
+                return global_mean[0]
+            else:
+                return global_mean
+        else:
+            np.copyto(out, global_mean)
+            return
+
+    else:
+        return np.mean(a, axis=axis, dtype=dtype, out=out)
+
+# ----------------------------------------------------
 def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
     '''
     Computes C = beta*C + alpha*op(A)*op(B), where A and B are row-distributed matrices.
@@ -224,5 +271,6 @@ def _thin_svd(M, comm=None, method='auto'):
 # Define public facing API
 max = _basic_max_via_python
 min = _basic_min_via_python
+mean = _basic_mean_via_python
 product = _basic_product_via_python
 thin_svd = _thin_svd
