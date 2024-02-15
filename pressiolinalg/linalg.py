@@ -330,5 +330,6 @@ def _thin_svd(M, comm=None, method='auto'):
 max = _basic_max_via_python
 min = _basic_min_via_python
 mean = _basic_mean_via_python
+std = _basic_std_via_python
 product = _basic_product_via_python
 thin_svd = _thin_svd
