@@ -16,16 +16,16 @@ from pressiolinalg.linalg import _basic_min_via_python
 ###  Set up problem  ###
 ########################
 
-def _min_max_setup(operation, rank, axis=None, out=None, comm=None):
+def _min_max_setup(operation, rank, out=None, comm=None):
     num_processors = comm.Get_size()
     local_arr, global_arr = utils.get_local_and_global_arrays(rank, comm)
 
     if operation == "min":
-        min_result = _basic_min_via_python(local_arr, axis=axis, out=out, comm=comm)
+        min_result = _basic_min_via_python(local_arr, out=out, comm=comm)
         return min_result, np.min(global_arr)
     elif operation == "max":
-        max_result = _basic_max_via_python(local_arr, axis=axis, out=out, comm=comm)
-        return max_result, np.max(global_arr, axis=axis)
+        max_result = _basic_max_via_python(local_arr, out=out, comm=comm)
+        return max_result, np.max(global_arr)
     else:
         return None, max(global_arr)
 

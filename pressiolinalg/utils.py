@@ -11,6 +11,7 @@ except ModuleNotFoundError:
 #####################################################
 
 def distribute_vector(global_vector, comm):
+    '''Distributes a global vector over all available MPI processes.'''
     n_procs = comm.Get_size()
 
     local_size = len(global_vector) // n_procs
@@ -21,6 +22,7 @@ def distribute_vector(global_vector, comm):
     return local_vector
 
 def distribute_array(global_array, comm):
+    '''Distributes a global np.array over all available MPI processes.'''
     n_procs = comm.Get_size()
 
     dim = len(global_array.shape)
@@ -43,6 +45,7 @@ def distribute_array(global_array, comm):
     return local_array
 
 def get_local_and_global_arrays(rank, comm):
+    '''Generates both local and global arrays for use in testing.'''
     n_procs = comm.Get_size()
 
     if rank == 1:
@@ -66,4 +69,28 @@ def get_local_and_global_arrays(rank, comm):
                     global_arr[i][j][k] = i+j+k
         local_arr = distribute_array(global_arr, comm)
 
+    else:
+        raise ValueError(f"This function only supports arrays up to rank 3 (received rank {rank})")
+
     return local_arr, global_arr
+
+
+#####################################################
+########           General Helpers           ########
+#####################################################
+
+def verify_out_size(out, expected_size):
+    '''Checks that the out parameter is the correct size for holding the operation's output.'''
+    if out is not None:
+        assert out.size == expected_size, f"out should have size {expected_size}"
+
+def return_to_out_if_given(result, out):
+    '''Copies the result of an operation to the out array, if one is provided.'''
+    if out is None:
+        return result
+    else:
+        if isinstance(result, np.ndarray):
+            np.copyto(out, result)
+        else:
+            out.fill(result)
+        return

@@ -15,12 +15,12 @@ from pressiolinalg.linalg import _basic_std_via_python
 ###  Set up problem  ###
 ########################
 
-def _std_setup(rank, axis=None, dtype=None, out=None, ddof=0, comm=None):
+def _std_setup(rank, dtype=None, out=None, ddof=0, comm=None):
     n_procs = comm.Get_size()
     local_arr, global_arr = utils.get_local_and_global_arrays(rank, comm)
 
-    std_result = _basic_std_via_python(local_arr, axis=axis, dtype=dtype, out=out, ddof=ddof, comm=comm)
-    return std_result, np.std(global_arr, axis=axis, dtype=dtype, ddof=ddof)
+    std_result = _basic_std_via_python(local_arr, dtype=dtype, out=out, ddof=ddof, comm=comm)
+    return std_result, np.std(global_arr, dtype=dtype, ddof=ddof)
 
 
 ########################

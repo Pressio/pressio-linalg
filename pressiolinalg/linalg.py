@@ -5,9 +5,10 @@ https://stackoverflow.com/questions/47599162/pybind11-how-to-package-c-and-pytho
 '''
 
 import numpy as np
+from pressiolinalg import utils
 
 # ----------------------------------------------------
-def _basic_max_via_python(a, axis=None, out=None, comm=None):
+def _basic_max_via_python(a, out=None, comm=None):
     '''
     Finds the maximum of a distributed vector.
 
@@ -20,35 +21,19 @@ def _basic_max_via_python(a, axis=None, out=None, comm=None):
     Returns:
         max (np.ndarray or scalar): The maximum of the array, returned to all processes.
     '''
-    max_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
-
     if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
-        # TO DO: Add support for axis (and out)
-        if axis is not None:
-            raise ValueError("The axis argument is not currently supported.")
+        utils.verify_out_size(out, 1)
 
-        if out is not None:
-            assert out.ndim == max_dim, "out must have correct dimensions."
+        local_max = np.max(a)
+        global_max = comm.allreduce(local_max, op=MPI.MAX)
 
-        local_max = np.max(a, axis=axis)
-        global_max = np.zeros(max_dim, dtype=a.dtype)
-
-        comm.Allreduce(local_max, global_max, op=MPI.MAX)
-
-        if out is None:
-            if global_max.ndim == 1:
-                return global_max[0]
-            else:
-                return global_max
-        else:
-            np.copyto(out, global_max)
-            return
+        return utils.return_to_out_if_given(global_max, out)
 
     else:
-        return np.max(a, axis=axis, out=out)
+        return np.max(a, out=out)
 
 # ----------------------------------------------------
 def _basic_min_via_python(a, axis=None, out=None, comm=None):
@@ -64,38 +49,22 @@ def _basic_min_via_python(a, axis=None, out=None, comm=None):
     Returns:
         min (np.ndarray or scalar): The minimum of the array, returned to all processes.
     '''
-    min_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
-
     if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
-        # TO DO: Add support for axis (and out)
-        if axis is not None:
-            raise ValueError("The axis argument is not currently supported.")
+        utils.verify_out_size(out, 1)
 
-        if out is not None:
-            assert out.ndim == min_dim, "out must have correct dimensions."
+        local_min = np.min(a)
+        global_min = comm.allreduce(local_min, op=MPI.MIN)
 
-        local_min = np.min(a, axis=axis)
-        global_min = np.zeros(min_dim, dtype=a.dtype)
-
-        comm.Allreduce(local_min, global_min, op=MPI.MIN)
-
-        if out is None:
-            if global_min.ndim == 1:
-                return global_min[0]
-            else:
-                return global_min
-        else:
-            np.copyto(out, global_min)
-            return
+        return utils.return_to_out_if_given(global_min, out)
 
     else:
-        return np.min(a, axis=axis, out=out)
+        return np.min(a, out=out)
 
 # ----------------------------------------------------
-def _basic_mean_via_python(a, axis=None, dtype=None, out=None, comm=None):
+def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
     '''
     Finds the mean of a distributed array.
 
@@ -114,39 +83,24 @@ def _basic_mean_via_python(a, axis=None, dtype=None, out=None, comm=None):
         from mpi4py import MPI
 
         n_procs = comm.Get_size()
-        mean_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
 
-        # TO DO: Add support for axis (and out)
-        if axis is not None:
-            raise ValueError("The axis argument is not currently supported.")
+        utils.verify_out_size(out, 1)
 
-        if out is not None:
-            assert out.ndim == mean_dim, "out must have correct dimensions."
+        local_size = a.size
+        global_size = comm.allreduce(local_size, op=MPI.SUM)
 
-        local_size = np.array([a.size], dtype=int)
-        global_size = np.empty(1, dtype=int)
+        local_sum = np.sum(a)
+        global_sum = comm.allreduce(local_sum, op=MPI.SUM)
 
-        global_sum = np.empty(a.size, dtype=a.dtype)
+        global_mean = global_sum / global_size
 
-        comm.Allreduce(local_size, global_size, op=MPI.SUM)
-        comm.Allreduce(a, global_sum, op=MPI.SUM)
-
-        global_mean = np.sum(global_sum) / np.sum(global_size)
-
-        if out is None:
-            if global_mean.ndim == 1 and global_mean.shape[0] == 1:
-                return global_mean[0]
-            else:
-                return global_mean
-        else:
-            np.copyto(out, global_mean)
-            return
+        return utils.return_to_out_if_given(global_mean, out)
 
     else:
-        return np.mean(a, axis=axis, dtype=dtype, out=out)
+        return np.mean(a, dtype=dtype, out=out)
 
 # ----------------------------------------------------
-def _basic_std_via_python(a, axis=None, dtype=None, out=None, ddof=0, comm=None):
+def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
     '''
     Finds the standard deviation of a distributed array.
 
@@ -166,38 +120,22 @@ def _basic_std_via_python(a, axis=None, dtype=None, out=None, ddof=0, comm=None)
         from mpi4py import MPI
 
         n_procs = comm.Get_size()
-        std_dim = 1 if axis is None else a.ndim - 1 if isinstance(axis, int) else a.ndim - len(axis)
 
-        # TO DO: Add support for axis (and out)
-        if axis is not None:
-            raise ValueError("The axis argument is not currently supported.")
-
-        if out is not None:
-            assert out.ndim == std_dim, "out must have correct dimensions."
+        utils.verify_out_size(out, 1)
 
         # Get total number of elements
-        local_size = np.array([a.size], dtype=int)
-        global_size = np.empty(1, dtype=int)
-        comm.Allreduce(local_size, global_size, op=MPI.SUM)
+        global_size = comm.allreduce(a.size, op=MPI.SUM)
 
         # Get standard deviation
-        global_mean = _basic_mean_via_python(a, axis=axis, dtype=dtype, comm=comm)
+        global_mean = _basic_mean_via_python(a, dtype=dtype, comm=comm)
         local_sq_diff = np.sum(np.square(a - global_mean))
-        global_sq_diff = np.empty(1, dtype=type(local_sq_diff))
-        comm.Allreduce(local_sq_diff, global_sq_diff, op=MPI.SUM)
-        std_dev = np.sqrt(global_sq_diff[0] / (global_size[0] - ddof))
+        global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
+        std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
 
-        if out is None:
-            if std_dev.ndim == 1 and std_dev.shape[0] == 1:
-                return std_dev[0]
-            else:
-                return std_dev
-        else:
-            np.copyto(out, std_dev)
-            return
+        return utils.return_to_out_if_given(std_dev, out)
 
     else:
-        return np.std(a, axis=axis, dtype=dtype, out=out, ddof=ddof)
+        return np.std(a, dtype=dtype, out=out, ddof=ddof)
 
 # ----------------------------------------------------
 def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):

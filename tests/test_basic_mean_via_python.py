@@ -15,11 +15,11 @@ from pressiolinalg.linalg import _basic_mean_via_python
 ###  Set up problem  ###
 ########################
 
-def _mean_setup(rank, axis=None, dtype=None, out=None, comm=None):
+def _mean_setup(rank, dtype=None, out=None, comm=None):
     n_procs = comm.Get_size()
     local_arr, global_arr = utils.get_local_and_global_arrays(rank, comm)
-    mean_result = _basic_mean_via_python(local_arr, axis=axis, dtype=dtype, out=out, comm=comm)
-    return mean_result, np.mean(global_arr, axis=axis, dtype=dtype)
+    mean_result = _basic_mean_via_python(local_arr, dtype=dtype, out=out, comm=comm)
+    return mean_result, np.mean(global_arr, dtype=dtype)
 
 
 ########################
