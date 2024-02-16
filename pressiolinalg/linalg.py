@@ -14,7 +14,6 @@ def _basic_max_via_python(a, out=None, comm=None):
 
     Args:
         a (np.ndarray): Local input data
-        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
         out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
 
@@ -36,13 +35,12 @@ def _basic_max_via_python(a, out=None, comm=None):
         return np.max(a, out=out)
 
 # ----------------------------------------------------
-def _basic_min_via_python(a, axis=None, out=None, comm=None):
+def _basic_min_via_python(a, out=None, comm=None):
     '''
     Finds the minimum of a distributed vector.
 
     Args:
         a (np.ndarray): Local input data
-        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
         out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
 
@@ -71,7 +69,6 @@ def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
     Args:
         a (np.ndarray): Local input data
         dtype (data-type): Type to use in computing the mean (by default, uses the input dtype, float32 for integer inputs)
-        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
         out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
 
@@ -107,7 +104,6 @@ def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
     Args:
         a (np.ndarray): Local input data
         dtype (data-type): Type to use in computing the standard deviation (by default, uses the input dtype, float32 for integer inputs)
-        axis (int or tuple of ints): Axis or axes along which to operate (by default, flattened input is used)
         out (np.ndarray): Output array in which to place the result (default: None)
         ddof (int): Delta degrees of freedom used in divisor N - ddof (default: 0)
         comm (MPI_Comm): MPI communicator (default: None)
