@@ -1,3 +1,5 @@
+import math
+import warnings
 import numpy as np
 
 import pytest
@@ -34,10 +36,13 @@ def test_python_mean_vector_mpi():
 @pytest.mark.mpi(min_size=3)
 def test_python_mean_null_vector_mpi():
     comm = MPI.COMM_WORLD
-    try:
-        result, expected = _mean_setup(rank=0, comm=comm)
-    except ValueError as e:
-        assert str(e) == "global_size = 0 (cannot calculate mean = sum / global_size)."
+
+    # Both pla.mean and np.mean will output warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result_00, expected_00 = _mean_setup(rank=0, comm=comm)
+        assert math.isnan(result_00)
+        assert math.isnan(expected_00)
 
 @pytest.mark.mpi(min_size=3)
 def test_python_mean_array_mpi():

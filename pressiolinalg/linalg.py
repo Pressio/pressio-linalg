@@ -4,6 +4,7 @@ see this for why this file exists and is done this way
 https://stackoverflow.com/questions/47599162/pybind11-how-to-package-c-and-python-code-into-a-single-package?rq=1
 '''
 
+import warnings
 import numpy as np
 from pressiolinalg import utils
 
@@ -86,13 +87,14 @@ def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
         local_size = a.size
         global_size = comm.allreduce(local_size, op=MPI.SUM)
 
-        if global_size == 0:
-            raise ValueError("global_size = 0 (cannot calculate mean = sum / global_size).")
-
         local_sum = np.sum(a)
         global_sum = comm.allreduce(local_sum, op=MPI.SUM)
 
-        global_mean = global_sum / global_size
+        if global_size == 0:
+            global_mean = np.nan
+            warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
+        else:
+            global_mean = global_sum / global_size
 
         return utils.copy_result_to_out_if_not_none_else_return(global_mean, out)
 
