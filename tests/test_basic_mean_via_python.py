@@ -31,6 +31,7 @@ def test_python_mean_vector_mpi():
     result, expected = _mean_setup(rank=1, comm=comm)
     assert result == expected
 
+@pytest.mark.mpi(min_size=3)
 def test_python_mean_null_vector_mpi():
     comm = MPI.COMM_WORLD
     try:
