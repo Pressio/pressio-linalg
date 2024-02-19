@@ -7,7 +7,7 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
-from pressiolinalg import utils
+import tests.test_utils as utils
 from pressiolinalg.linalg import _basic_mean_via_python
 
 
@@ -17,7 +17,7 @@ from pressiolinalg.linalg import _basic_mean_via_python
 
 def _mean_setup(rank, dtype=None, out=None, comm=None):
     n_procs = comm.Get_size()
-    local_arr, global_arr = utils.get_local_and_global_arrays(rank, comm)
+    local_arr, global_arr = utils.generate_local_and_global_arrays(rank, comm)
     mean_result = _basic_mean_via_python(local_arr, dtype=dtype, out=out, comm=comm)
     return mean_result, np.mean(global_arr, dtype=dtype)
 

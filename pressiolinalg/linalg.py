@@ -24,12 +24,12 @@ def _basic_max_via_python(a, out=None, comm=None):
         import mpi4py
         from mpi4py import MPI
 
-        utils.verify_out_size(out, 1)
+        utils.assert_out_size_matches_expected(out, 1)
 
         local_max = np.max(a)
         global_max = comm.allreduce(local_max, op=MPI.MAX)
 
-        return utils.return_to_out_if_given(global_max, out)
+        return utils.copy_result_to_out_if_given_else_return(global_max, out)
 
     else:
         return np.max(a, out=out)
@@ -51,12 +51,12 @@ def _basic_min_via_python(a, out=None, comm=None):
         import mpi4py
         from mpi4py import MPI
 
-        utils.verify_out_size(out, 1)
+        utils.assert_out_size_matches_expected(out, 1)
 
         local_min = np.min(a)
         global_min = comm.allreduce(local_min, op=MPI.MIN)
 
-        return utils.return_to_out_if_given(global_min, out)
+        return utils.copy_result_to_out_if_given_else_return(global_min, out)
 
     else:
         return np.min(a, out=out)
@@ -81,7 +81,7 @@ def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
 
         n_procs = comm.Get_size()
 
-        utils.verify_out_size(out, 1)
+        utils.assert_out_size_matches_expected(out, 1)
 
         local_size = a.size
         global_size = comm.allreduce(local_size, op=MPI.SUM)
@@ -91,7 +91,7 @@ def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
 
         global_mean = global_sum / global_size
 
-        return utils.return_to_out_if_given(global_mean, out)
+        return utils.copy_result_to_out_if_given_else_return(global_mean, out)
 
     else:
         return np.mean(a, dtype=dtype, out=out)
@@ -117,7 +117,7 @@ def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
 
         n_procs = comm.Get_size()
 
-        utils.verify_out_size(out, 1)
+        utils.assert_out_size_matches_expected(out, 1)
 
         # Get total number of elements
         global_size = comm.allreduce(a.size, op=MPI.SUM)
@@ -128,7 +128,7 @@ def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
         global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
         std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
 
-        return utils.return_to_out_if_given(std_dev, out)
+        return utils.copy_result_to_out_if_given_else_return(std_dev, out)
 
     else:
         return np.std(a, dtype=dtype, out=out, ddof=ddof)

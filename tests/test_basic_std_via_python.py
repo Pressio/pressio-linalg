@@ -7,7 +7,7 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
-from pressiolinalg import utils
+import tests.test_utils as utils
 from pressiolinalg.linalg import _basic_std_via_python
 
 
@@ -17,7 +17,7 @@ from pressiolinalg.linalg import _basic_std_via_python
 
 def _std_setup(rank, dtype=None, out=None, ddof=0, comm=None):
     n_procs = comm.Get_size()
-    local_arr, global_arr = utils.get_local_and_global_arrays(rank, comm)
+    local_arr, global_arr = utils.generate_local_and_global_arrays(rank, comm)
 
     std_result = _basic_std_via_python(local_arr, dtype=dtype, out=out, ddof=ddof, comm=comm)
     return std_result, np.std(global_arr, dtype=dtype, ddof=ddof)
