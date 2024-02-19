@@ -86,6 +86,9 @@ def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
         local_size = a.size
         global_size = comm.allreduce(local_size, op=MPI.SUM)
 
+        if global_size == 0:
+            raise ValueError("global_size = 0 (cannot calculate mean = sum / global_size).")
+
         local_sum = np.sum(a)
         global_sum = comm.allreduce(local_sum, op=MPI.SUM)
 

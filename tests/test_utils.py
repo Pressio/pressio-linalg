@@ -48,7 +48,11 @@ def generate_local_and_global_arrays(dim, comm):
     '''Generates both local and global arrays (for use in testing).'''
     n_procs = comm.Get_size()
 
-    if dim == 1:
+    if dim == 0:
+      global_arr = np.empty(0)
+      local_arr = distribute_vector(global_arr, comm)
+
+    elif dim == 1:
         global_arr = np.empty(n_procs * 2, dtype=np.int64)
         for i in range(n_procs * 2):
             global_arr[i] = i

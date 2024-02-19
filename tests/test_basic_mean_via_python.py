@@ -16,7 +16,6 @@ from pressiolinalg.linalg import _basic_mean_via_python
 ########################
 
 def _mean_setup(rank, dtype=None, out=None, comm=None):
-    n_procs = comm.Get_size()
     local_arr, global_arr = utils.generate_local_and_global_arrays(rank, comm)
     mean_result = _basic_mean_via_python(local_arr, dtype=dtype, out=out, comm=comm)
     return mean_result, np.mean(global_arr, dtype=dtype)
@@ -31,6 +30,13 @@ def test_python_mean_vector_mpi():
     comm = MPI.COMM_WORLD
     result, expected = _mean_setup(rank=1, comm=comm)
     assert result == expected
+
+def test_python_mean_null_vector_mpi():
+    comm = MPI.COMM_WORLD
+    try:
+        result, expected = _mean_setup(rank=0, comm=comm)
+    except ValueError as e:
+        assert str(e) == "global_size = 0 (cannot calculate mean = sum / global_size)."
 
 @pytest.mark.mpi(min_size=3)
 def test_python_mean_array_mpi():
@@ -54,6 +60,7 @@ def test_python_mean_serial():
 
 
 if __name__ == "__main__":
+    test_python_mean_null_vector_mpi()
     test_python_mean_vector_mpi()
     test_python_mean_array_mpi()
     test_python_mean_serial()
