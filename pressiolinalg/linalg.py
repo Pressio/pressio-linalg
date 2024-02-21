@@ -9,28 +9,62 @@ import numpy as np
 from pressiolinalg import utils
 
 # ----------------------------------------------------
-def _basic_max_via_python(a, out=None, comm=None):
-    '''
-    Finds the maximum of a distributed vector.
 
-    Args:
+def _tensor_max_axis0(a, out=None, comm=None):
+    # utils.assert_out_size_matches_expected(out, 1)
+    # local_max = np.max(a)
+    # global_max = comm.allreduce(local_max, op=MPI.MAX)
+    # return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
+    ...
+
+def _tensor_max_axis1(a, out=None, comm=None):
+    ...
+
+def _tensor_max_axis2(a, out=None, comm=None):
+    ...
+
+def _tensor_max(a, axis=None, out=None, comm=None):
+    '''
+    Return the maximum of a possibly distributed array or maximum along an axis.
+
+    Parameters:
         a (np.ndarray): Local input data
+        axis: None or int
         out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
+        IMPROVE THIS
 
     Returns:
-        max (np.ndarray or scalar): The maximum of the array, returned to all processes.
+        max (np.ndarray or scalar):
+        IMPROVE THIS
+
+    Preconditions:
+      - a is at most a rank-3 tensor
+      - if a is distributed, a is distributed over the 0th axis
+      - if out!=None, then it must be ...
+      - if axis!=None, then ...
+
+    Postconditions:
+      - a and comm are not modified
+      - if out is None on entry, it remains None on exit
     '''
+
+    assert a.ndim <= 3, "a must be at most a rank-3 tensor"
+    # finish
+
     if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
-        utils.assert_out_size_matches_expected(out, 1)
-
-        local_max = np.max(a)
-        global_max = comm.allreduce(local_max, op=MPI.MAX)
-
-        return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
+        if axis is None:
+            local_max = np.max(a)
+            return comm.allreduce(local_max, op=MPI.MAX)
+        elif axis==0:
+            return _tensor_max_axis0(a, out=None, comm=None)
+        elif axis==1:
+            return _tensor_max_axis1(a, out=None, comm=None)
+        elif axis==2:
+            return _tensor_max_axis2(a, out=None, comm=None)
 
     else:
         return np.max(a, out=out)
@@ -38,9 +72,9 @@ def _basic_max_via_python(a, out=None, comm=None):
 # ----------------------------------------------------
 def _basic_min_via_python(a, out=None, comm=None):
     '''
-    Finds the minimum of a distributed vector.
+    Return the minimum of a possibly distributed array or minimum along an axis.
 
-    Args:
+    Parameters:
         a (np.ndarray): Local input data
         out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
@@ -65,9 +99,9 @@ def _basic_min_via_python(a, out=None, comm=None):
 # ----------------------------------------------------
 def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
     '''
-    Finds the mean of a distributed array.
+    Return the mean of a possibly distributed array or mean along an axis.
 
-    Args:
+    Parameters:
         a (np.ndarray): Local input data
         dtype (data-type): Type to use in computing the mean (by default, uses the input dtype, float32 for integer inputs)
         out (np.ndarray): Output array in which to place the result (default: None)
@@ -104,9 +138,9 @@ def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
 # ----------------------------------------------------
 def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
     '''
-    Finds the standard deviation of a distributed array.
+    Return the stddev of a possibly distributed array or stddev along an axis.
 
-    Args:
+    Parameters:
         a (np.ndarray): Local input data
         dtype (data-type): Type to use in computing the standard deviation (by default, uses the input dtype, float32 for integer inputs)
         out (np.ndarray): Output array in which to place the result (default: None)
@@ -143,7 +177,7 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
     '''
     Computes C = beta*C + alpha*op(A)*op(B), where A and B are row-distributed matrices.
 
-    Args:
+    Parameters:
         flagA (str): Determines the orientation of A, "T" for transpose or "N" for non-transpose.
         flagB (str): Determines the orientation of B, "T" for transpose or "N" for non-transpose.
         alpha (float): Coefficient of AB.
