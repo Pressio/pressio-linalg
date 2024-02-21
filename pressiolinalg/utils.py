@@ -1,9 +1,5 @@
 import numpy as np
 
-#####################################################
-########           General Helpers           ########
-#####################################################
-
 def assert_out_size_matches_expected(out, expected_size):
     '''Checks that the out parameter is the correct size for holding the operation's output.'''
     if out is not None:
