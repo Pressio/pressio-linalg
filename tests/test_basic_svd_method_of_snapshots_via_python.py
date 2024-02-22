@@ -17,7 +17,6 @@ from pressiolinalg.linalg import _thin_svd
 def create_snapshots(comm):
     num_processes = comm.Get_size()
     global_snapshots = np.array([np.arange(0, num_processes)]).T
-    print(f"Global snapshots: {global_snapshots}")
     local_snapshots = utils.distribute_array(global_snapshots, comm)
     return global_snapshots, local_snapshots
 

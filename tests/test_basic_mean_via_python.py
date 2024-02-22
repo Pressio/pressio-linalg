@@ -17,8 +17,8 @@ from pressiolinalg.linalg import _basic_mean_via_python
 ###  Set up problem  ###
 ########################
 
-def _mean_setup(rank, dtype=None, out=None, comm=None):
-    local_arr, global_arr = utils.generate_local_and_global_arrays(rank, comm)
+def _mean_setup(ndim, dtype=None, out=None, comm=None):
+    local_arr, global_arr = utils.generate_local_and_global_arrays(ndim, comm)
     mean_result = _basic_mean_via_python(local_arr, dtype=dtype, out=out, comm=comm)
     return mean_result, np.mean(global_arr, dtype=dtype)
 
@@ -30,8 +30,8 @@ def _mean_setup(rank, dtype=None, out=None, comm=None):
 @pytest.mark.mpi(min_size=3)
 def test_python_mean_vector_mpi():
     comm = MPI.COMM_WORLD
-    result, expected = _mean_setup(rank=1, comm=comm)
-    assert result == expected
+    result, expected = _mean_setup(ndim=1, comm=comm)
+    np.testing.assert_almost_equal(result, expected, decimal=10)
 
 @pytest.mark.mpi(min_size=3)
 def test_python_mean_null_vector_mpi():
@@ -40,29 +40,29 @@ def test_python_mean_null_vector_mpi():
     # Both pla.mean and np.mean will output warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        result_00, expected_00 = _mean_setup(rank=0, comm=comm)
-        assert math.isnan(result_00)
-        assert math.isnan(expected_00)
+        result, expected = _mean_setup(ndim=0, comm=comm)
+        assert math.isnan(result)
+        assert math.isnan(expected)
 
 @pytest.mark.mpi(min_size=3)
 def test_python_mean_array_mpi():
     comm = MPI.COMM_WORLD
-    result_01, expected_01 = _mean_setup(rank=2, dtype=np.float32, comm=comm)
+    result_01, expected_01 = _mean_setup(ndim=2, dtype=np.float32, comm=comm)
     assert np.allclose(result_01, expected_01)
 
-    result_02, expected_02 = _mean_setup(rank=3, comm=comm)
+    result_02, expected_02 = _mean_setup(ndim=3, comm=comm)
     assert np.allclose(result_02, expected_02)
 
     test_out = np.empty(1)
-    _, expected_03 = _mean_setup(rank=3, out=test_out, comm=comm)
+    _, expected_03 = _mean_setup(ndim=3, out=test_out, comm=comm)
     assert np.allclose(test_out, expected_03)
 
 def test_python_mean_serial():
     vector = np.random.rand(10)
-    assert _basic_mean_via_python(vector) == np.mean(vector)
+    np.testing.assert_almost_equal(_basic_mean_via_python(vector), np.mean(vector), decimal=10)
 
     array = np.random.rand(3, 10)
-    assert _basic_mean_via_python(array) == np.mean(array)
+    np.testing.assert_almost_equal(_basic_mean_via_python(array), np.mean(array), decimal=10)
 
 
 if __name__ == "__main__":

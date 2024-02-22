@@ -10,70 +10,71 @@ except ModuleNotFoundError:
 ########             MPI Helpers             ########
 #####################################################
 
-def distribute_vector(global_vector, comm):
-    '''Distributes a global vector such that all available MPI processes receive the same number of elements.'''
+def distribute_array(global_array, comm, axis=0):
+    '''
+    Splts an np.array and distributes to all available MPI processes as evenly as possible
+
+    Inputs:
+        global_array: The global np.array to be distributed.
+        comm: The MPI communicator
+        axis: The axis along which to split the input array. By default, splits along the first axis (rows).
+
+    Returns:
+        local_array: The subset of global_array sent to the current MPI process.
+
+    '''
+    # Get comm info
     n_procs = comm.Get_size()
+    rank = comm.Get_rank()
 
-    local_size = len(global_vector) // n_procs
-    local_vector = np.zeros(local_size, dtype=int)
+    # Handle null case
+    if global_array.size == 0:
+        return np.empty(0)
 
-    comm.Scatter(global_vector, local_vector, root=0)
-
-    return local_vector
-
-def distribute_array(global_array, comm):
-    '''Distributes a global np.array such that all available MPI processes receive the same number of rows.'''
-    n_procs = comm.Get_size()
-
-    dim = len(global_array.shape)
-
-    if dim == 2:
-        rows, cols = global_array.shape
-        local_rows = rows // n_procs
-        local_array = np.zeros((local_rows, cols), dtype=int)
-
-    elif dim == 3:
-        rows, cols, depth = global_array.shape
-        local_rows = rows // n_procs
-        local_array = np.zeros((local_rows, cols, depth), dtype=int)
-
+    # Split the global_array and send to corresponding MPI rank
+    if rank == 0:
+        splits = np.array_split(global_array, n_procs, axis=axis)
+        for proc in range(n_procs):
+            if proc == 0:
+                local_array = splits[proc]
+            else:
+                comm.send(splits[proc], dest=proc)
     else:
-        return None
-
-    comm.Scatter(global_array, local_array, root=0)
+        local_array = comm.recv(source=0)
 
     return local_array
 
-def generate_local_and_global_arrays(dim, comm):
-    '''Generates both local and global arrays (for use in testing).'''
-    n_procs = comm.Get_size()
+def generate_local_and_global_arrays(ndim, comm, dim1=7, dim2=5, dim3=6):
+    '''Generates both local and global arrays using optional dim<x> arguments to specify the shape'''
+    # Get comm info
+    rank = comm.Get_rank()
 
-    if dim == 0:
-      global_arr = np.empty(0)
-      local_arr = distribute_vector(global_arr, comm)
-
-    elif dim == 1:
-        global_arr = np.empty(n_procs * 2, dtype=np.int64)
-        for i in range(n_procs * 2):
-            global_arr[i] = i
-        local_arr = distribute_vector(global_arr, comm)
-
-    elif dim == 2:
-        global_arr = np.empty((n_procs * 2, 3), dtype=np.int64)
-        for i in range(n_procs * 2):
-            for j in range(3):
-                global_arr[i][j] = i+j
-        local_arr = distribute_array(global_arr, comm)
-
-    elif dim == 3:
-        global_arr = np.empty((n_procs * 2, 3, 4), dtype=np.int64)
-        for i in range(n_procs * 2):
-            for j in range(3):
-                for k in range(4):
-                    global_arr[i][j][k] = i+j+k
-        local_arr = distribute_array(global_arr, comm)
-
+    # Create global_array (using optional dim<x> arguments)
+    if rank == 0:
+        if ndim == 0:
+            global_arr = np.empty(0)
+        elif ndim == 1:
+            global_arr = np.random.rand(dim1) if rank == 0 else np.empty(dim1)
+        elif ndim == 2:
+            global_arr = np.random.rand(dim1, dim2) if rank == 0 else np.empty((dim1, dim2))
+        elif ndim == 3:
+            global_arr = np.random.rand(dim1, dim2, dim3) if rank == 0 else np.empty((dim1, dim2, dim3))
+        else:
+            raise ValueError(f"This function only supports arrays up to rank 3 (received rank {ndim})")
     else:
-        raise ValueError(f"This function only supports arrays up to rank 3 (received rank {dim})")
+        if ndim == 0:
+            global_arr = np.empty(0)
+        elif ndim == 1:
+            global_arr = np.empty(dim1, dtype=float)
+        elif ndim == 2:
+            global_arr = np.empty((dim1, dim2), dtype=float)
+        elif ndim == 3:
+            global_arr = np.empty((dim1, dim2, dim3), dtype=float)
+        else:
+            raise ValueError(f"This function only supports arrays up to rank 3 (received rank {ndim})")
+
+    # Broadcast global_array and create local_array
+    comm.Bcast(global_arr, root=0)
+    local_arr = distribute_array(global_arr, comm)
 
     return local_arr, global_arr

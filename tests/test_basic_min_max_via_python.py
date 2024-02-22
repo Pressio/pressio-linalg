@@ -16,16 +16,16 @@ from pressiolinalg.linalg import _basic_min_via_python
 ###  Set up problem  ###
 ########################
 
-def _min_max_setup(operation, rank, out=None, comm=None):
+def _min_max_setup(operation, ndim, axis=None, out=None, comm=None):
     num_processors = comm.Get_size()
-    local_arr, global_arr = utils.generate_local_and_global_arrays(rank, comm)
+    local_arr, global_arr = utils.generate_local_and_global_arrays(ndim, comm)
 
     if operation == "min":
         min_result = _basic_min_via_python(local_arr, out=out, comm=comm)
         return min_result, np.min(global_arr)
     elif operation == "max":
-        max_result = _basic_max_via_python(local_arr, out=out, comm=comm)
-        return max_result, np.max(global_arr)
+        max_result = _basic_max_via_python(local_arr, axis=axis, out=out, comm=comm)
+        return max_result, np.max(global_arr, axis=axis)
     else:
         return None, max(global_arr)
 
@@ -37,39 +37,60 @@ def _min_max_setup(operation, rank, out=None, comm=None):
 @pytest.mark.mpi(min_size=3)
 def test_python_max_vector_mpi():
     comm = MPI.COMM_WORLD
-    result, expected = _min_max_setup(operation="max", rank=1, comm=comm)
+    result, expected = _min_max_setup(operation="max", ndim=1, comm=comm)
     assert result == expected
 
 @pytest.mark.mpi(min_size=3)
 def test_python_min_vector_mpi():
     comm = MPI.COMM_WORLD
-    result, expected_min = _min_max_setup(operation="min", rank=1, comm=comm)
+    result, expected_min = _min_max_setup(operation="min", ndim=1, comm=comm)
     assert result == expected_min
 
 @pytest.mark.mpi(min_size=3)
 def test_python_max_array_mpi():
     comm = MPI.COMM_WORLD
-    result_01, expected_01 = _min_max_setup(operation="max", rank=2, comm=comm)
+    result_01, expected_01 = _min_max_setup(operation="max", ndim=2, comm=comm)
     assert np.allclose(result_01, expected_01)
 
-    result_02, expected_02 = _min_max_setup(operation="max", rank=3, comm=comm)
+    result_02, expected_02 = _min_max_setup(operation="max", ndim=3, comm=comm)
     assert np.allclose(result_02, expected_02)
 
     test_out = np.empty(1)
-    _, expected_03 = _min_max_setup(operation="max", rank=3, out=test_out, comm=comm)
+    _, expected_03 = _min_max_setup(operation="max", ndim=3, out=test_out, comm=comm)
     assert np.allclose(test_out, expected_03)
+
+@pytest.mark.mpi(min_size=3)
+def test_python_max_on_axis_mpi():
+    comm = MPI.COMM_WORLD
+    result_01, expected_01 = _min_max_setup(operation="max", ndim=2, axis=0, comm=comm)
+    assert np.allclose(result_01, expected_01)
+
+    # Make sure the result is a subset of the full max along the axis
+    result_02, expected_02 = _min_max_setup(operation="max", ndim=3, axis=1, comm=comm)
+    assert len(np.setdiff1d(result_02, expected_02)) == 0
+
+@pytest.mark.mpi(min_size=3)
+def test_python_min_on_axis_mpi():
+    comm = MPI.COMM_WORLD
+    result_01, expected_01 = _min_max_setup(operation="min", ndim=2, axis=0, comm=comm)
+    assert np.allclose(result_01, expected_01)
+
+    # Make sure the result is a subset of the full min along the axis
+    result_02, expected_02 = _min_max_setup(operation="min", ndim=3, axis=1, comm=comm)
+    assert len(np.setdiff1d(result_02, expected_02)) == 0
+
 
 @pytest.mark.mpi(min_size=3)
 def test_python_min_array_mpi():
     comm = MPI.COMM_WORLD
-    result_01, expected_01 = _min_max_setup(operation="min", rank=2, comm=comm)
+    result_01, expected_01 = _min_max_setup(operation="min", ndim=2, comm=comm)
     assert np.allclose(result_01, expected_01)
 
-    result_02, expected_02 = _min_max_setup(operation="min", rank=3, comm=comm)
+    result_02, expected_02 = _min_max_setup(operation="min", ndim=3, comm=comm)
     assert np.allclose(result_02, expected_02)
 
     test_out = np.empty(1)
-    _, expected_03 = _min_max_setup(operation="min", rank=3, out=test_out, comm=comm)
+    _, expected_03 = _min_max_setup(operation="min", ndim=3, out=test_out, comm=comm)
     assert np.allclose(test_out, expected_03)
 
 def test_python_max_serial():
@@ -92,5 +113,7 @@ if __name__ == "__main__":
     test_python_min_vector_mpi()
     test_python_max_array_mpi()
     test_python_min_array_mpi()
+    test_python_max_on_axis_mpi()
+    test_python_min_on_axis_mpi()
     test_python_max_serial()
     test_python_min_serial()

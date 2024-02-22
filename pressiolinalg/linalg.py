@@ -10,20 +10,7 @@ from pressiolinalg import utils
 
 # ----------------------------------------------------
 
-def _tensor_max_axis0(a, out=None, comm=None):
-    # utils.assert_out_size_matches_expected(out, 1)
-    # local_max = np.max(a)
-    # global_max = comm.allreduce(local_max, op=MPI.MAX)
-    # return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
-    ...
-
-def _tensor_max_axis1(a, out=None, comm=None):
-    ...
-
-def _tensor_max_axis2(a, out=None, comm=None):
-    ...
-
-def _tensor_max(a, axis=None, out=None, comm=None):
+def _basic_max_via_python(a, axis=None, out=None, comm=None):
     '''
     Return the maximum of a possibly distributed array or maximum along an axis.
 
@@ -41,8 +28,8 @@ def _tensor_max(a, axis=None, out=None, comm=None):
     Preconditions:
       - a is at most a rank-3 tensor
       - if a is distributed, a is distributed over the 0th axis
-      - if out!=None, then it must be ...
-      - if axis!=None, then ...
+      - if out != None, then it must be ...
+      - if axis != None, then it must be either an int or a tuple of ints
 
     Postconditions:
       - a and comm are not modified
@@ -50,51 +37,81 @@ def _tensor_max(a, axis=None, out=None, comm=None):
     '''
 
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    # finish
+    if axis is not None:
+        assert isinstance(axis, (int, tuple))
 
     if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
+        local_max = np.max(a, axis=axis)
+
         if axis is None:
-            local_max = np.max(a)
-            return comm.allreduce(local_max, op=MPI.MAX)
+            global_max = comm.allreduce(local_max, op=MPI.MAX)
+            return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
         elif axis==0:
-            return _tensor_max_axis0(a, out=None, comm=None)
+            global_max = np.zeros_like(local_max, dtype=local_max.dtype)
+            comm.Allreduce(local_max, global_max, op=MPI.MAX)
+            return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
         elif axis==1:
-            return _tensor_max_axis1(a, out=None, comm=None)
+            return utils.copy_result_to_out_if_not_none_else_return(local_max, out)
         elif axis==2:
-            return _tensor_max_axis2(a, out=None, comm=None)
+            return utils.copy_result_to_out_if_not_none_else_return(local_max, out)
 
     else:
-        return np.max(a, out=out)
+        return np.max(a, axis=axis, out=out)
 
 # ----------------------------------------------------
-def _basic_min_via_python(a, out=None, comm=None):
+def _basic_min_via_python(a, axis=None, out=None, comm=None):
     '''
     Return the minimum of a possibly distributed array or minimum along an axis.
 
     Parameters:
         a (np.ndarray): Local input data
+        axis: None or int
         out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
+        IMPROVE THIS
 
     Returns:
-        min (np.ndarray or scalar): The minimum of the array, returned to all processes.
+        min (np.ndarray or scalar):
+        IMPROVE THIS
+
+    Preconditions:
+      - a is at most a rank-3 tensor
+      - if a is distributed, a is distributed over the 0th axis
+      - if out != None, then it must be ...
+      - if axis != None, then it must be either an int or a tuple of ints
+
+    Postconditions:
+      - a and comm are not modified
+      - if out is None on entry, it remains None on exit
     '''
+
+    assert a.ndim <= 3, "a must be at most a rank-3 tensor"
+    if axis is not None:
+        assert isinstance(axis, (int, tuple))
+
     if comm is not None and comm.Get_size() > 1:
         import mpi4py
         from mpi4py import MPI
 
-        utils.assert_out_size_matches_expected(out, 1)
+        local_min = np.min(a, axis=axis)
 
-        local_min = np.min(a)
-        global_min = comm.allreduce(local_min, op=MPI.MIN)
-
-        return utils.copy_result_to_out_if_not_none_else_return(global_min, out)
+        if axis is None:
+            global_min = comm.allreduce(local_min, op=MPI.MIN)
+            return utils.copy_result_to_out_if_not_none_else_return(global_min, out)
+        elif axis==0:
+            global_min = np.zeros_like(local_min, dtype=local_min.dtype)
+            comm.Allreduce(local_min, global_min, op=MPI.MIN)
+            return utils.copy_result_to_out_if_not_none_else_return(global_min, out)
+        elif axis==1:
+            return utils.copy_result_to_out_if_not_none_else_return(local_min, out)
+        elif axis==2:
+            return utils.copy_result_to_out_if_not_none_else_return(local_min, out)
 
     else:
-        return np.min(a, out=out)
+        return np.min(a, axis=axis, out=out)
 
 # ----------------------------------------------------
 def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
@@ -115,8 +132,6 @@ def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
         from mpi4py import MPI
 
         n_procs = comm.Get_size()
-
-        utils.assert_out_size_matches_expected(out, 1)
 
         local_size = a.size
         global_size = comm.allreduce(local_size, op=MPI.SUM)
@@ -155,8 +170,6 @@ def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
         from mpi4py import MPI
 
         n_procs = comm.Get_size()
-
-        utils.assert_out_size_matches_expected(out, 1)
 
         # Get total number of elements
         global_size = comm.allreduce(a.size, op=MPI.SUM)
