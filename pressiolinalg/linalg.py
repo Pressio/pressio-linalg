@@ -37,8 +37,7 @@ def _basic_max_via_python(a, axis=None, out=None, comm=None):
     '''
 
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    if axis is not None:
-        assert isinstance(axis, (int, tuple))
+    utils.assert_axis_is_correct_type_and_within_range(a, axis)
 
     if comm is not None and comm.Get_size() > 1:
         import mpi4py
@@ -53,9 +52,7 @@ def _basic_max_via_python(a, axis=None, out=None, comm=None):
             global_max = np.zeros_like(local_max, dtype=local_max.dtype)
             comm.Allreduce(local_max, global_max, op=MPI.MAX)
             return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
-        elif axis==1:
-            return utils.copy_result_to_out_if_not_none_else_return(local_max, out)
-        elif axis==2:
+        else:
             return utils.copy_result_to_out_if_not_none_else_return(local_max, out)
 
     else:
@@ -89,8 +86,7 @@ def _basic_min_via_python(a, axis=None, out=None, comm=None):
     '''
 
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    if axis is not None:
-        assert isinstance(axis, (int, tuple))
+    utils.assert_axis_is_correct_type_and_within_range(a, axis)
 
     if comm is not None and comm.Get_size() > 1:
         import mpi4py

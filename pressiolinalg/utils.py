@@ -35,6 +35,16 @@ def get_global_shape_from_local_array(a, comm):
     print("global shape: ", global_shape)
     return global_shape
 
+def assert_axis_is_correct_type_and_within_range(a, axis):
+    if axis is not None:
+        if isinstance(axis, int):
+            assert axis <= a.ndim
+        elif isinstance(axis, tuple):
+            for ax in axis:
+                assert ax <= a.ndim
+        else:
+            raise ValueError("axis must be either an int or tuple")
+
 def assert_out_size_matches_expected(result, out):
     '''Checks that the out parameter has the correct shape for holding the operation's output.'''
     if out is not None:

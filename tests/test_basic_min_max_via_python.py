@@ -69,6 +69,9 @@ def test_python_max_on_axis_mpi():
     result_02, expected_02 = _min_max_setup(operation="max", ndim=3, axis=1, comm=comm)
     assert len(np.setdiff1d(result_02, expected_02)) == 0
 
+    result_03, expected_03 = _min_max_setup(operation="max", ndim=3, axis=(1,2), comm=comm)
+    assert len(np.setdiff1d(result_03, expected_03)) == 0
+
 @pytest.mark.mpi(min_size=3)
 def test_python_min_on_axis_mpi():
     comm = MPI.COMM_WORLD
@@ -78,6 +81,9 @@ def test_python_min_on_axis_mpi():
     # Make sure the result is a subset of the full min along the axis
     result_02, expected_02 = _min_max_setup(operation="min", ndim=3, axis=1, comm=comm)
     assert len(np.setdiff1d(result_02, expected_02)) == 0
+
+    result_03, expected_03 = _min_max_setup(operation="min", ndim=3, axis=(1,2), comm=comm)
+    assert len(np.setdiff1d(result_03, expected_03)) == 0
 
 
 @pytest.mark.mpi(min_size=3)
