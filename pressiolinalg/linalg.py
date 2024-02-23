@@ -10,30 +10,177 @@ from pressiolinalg import utils
 
 # ----------------------------------------------------
 
-def _basic_max_via_python(a, axis=None, out=None, comm=None):
+def _basic_max_via_python(a, axis=None, comm=None):
     '''
     Return the maximum of a possibly distributed array or maximum along an axis.
 
     Parameters:
-        a (np.ndarray): Local input data
+        a (np.ndarray): input data
         axis: None or int
-        out (np.ndarray): Output array in which to place the result (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
         IMPROVE THIS
 
     Returns:
-        max (np.ndarray or scalar):
-        IMPROVE THIS
+        if axis==None, returns a scalar
+        if axis is not None, returns an array of dimension a.dim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor
-      - if a is distributed, a is distributed over the 0th axis
-      - if out != None, then it must be ...
-      - if axis != None, then it must be either an int or a tuple of ints
+      - a is at most a rank-3 tensor and
+      - if a is distributed, it must be so along the 0-th axis,
+        and every rank must have the same a.shape[1] and a.shape[2]
+      - if axis != None, then it must be an int
 
     Postconditions:
       - a and comm are not modified
-      - if out is None on entry, it remains None on exit
+
+    Example 1:
+    **********
+
+       rank 0  2.2
+               3.3
+      =======================
+       rank 1  40.
+               51.
+               -24.
+               45.
+      =======================
+       rank 2  -4.
+
+    res = linalg.max(a, comm)
+    then ALL ranks will contain res = 51.
+
+    Example 2:
+    **********
+
+       rank 0  2.2  1.3  4.
+               3.3  5.0  33.
+      =======================
+       rank 1  40.  -2.  -4.
+               51.   4.   6.
+               -24.  8.   9.
+               45.  -3.  -4.
+      =======================
+       rank 2  -4.  8.   9.
+
+    Suppose that we do:
+
+       res = linal.max(a, axis=0, comm)
+
+    then every rank will contain the same res which is an array = ([51., 8., 33])
+    this is because the max is queried for the 0-th axis which is the
+    axis along which the data array is distributed.
+    So this operation must be a collective operation.
+
+    Suppose that we do:
+
+      res = linal.max(a, axis=1, comm)
+
+    then res is now a rank-1 array as follows
+
+       rank 0  4.
+               33.
+      =======================
+       rank 1  40.
+               51.
+               9.
+               45.
+      =======================
+       rank 2  9.
+
+    because the axis queried for the max is NOT a distributed axis
+    so this operation is purely local and the result has the same distribution
+    as the original array
+
+
+    Example 3:
+    **********
+
+                / 3.  6. -7.
+       rank 0  /2.  1.  4.
+               --------------
+
+                / 4.  -1.  5.
+               /3.  5.  3.
+      =======================
+
+       rank 1   / 2.  -2.  5.
+               /4.  -2.  -4.
+               --------------
+
+                / 8.  -1.  0.
+               /5.   4.   6.
+               --------------
+
+                / 2.  -0.  3.
+               /-2.   8.   9.
+               --------------
+
+                / 1.  -6.  1.
+               /4.  -3.  -4.
+      =======================
+
+       rank 2   / 2.  -0.  3.
+               /-4.  8.   9.
+               --------------
+
+    Suppose that we do:
+
+       res = linal.max(a, axis=0, comm)
+
+    then this is effectively a reduction over the 0-th axis
+    and every rank will contain the same res which is a rank-2 array as follows
+
+          ([[8., 6., 5.],
+            [5, 8., 9.]])
+
+    this is because the max is queried for the 0-th axis which is the
+    axis along which the data array is distributed.
+    So this operation must be a collective operation and we know that
+    memory-wise it is feasible to hold because this is no larger than the
+    local allocation on each rank.
+
+    Suppose that we do:
+
+      res = linal.max(a, axis=1, comm)
+
+    then res is now a rank-2 array as follows
+
+       rank 0  4, 6
+               5, 5
+      =======================
+       rank 1  4, 5
+               6, 8
+               9, 3
+               4, 1
+      =======================
+       rank 2  9, 3
+
+    because the axis queried for the max is NOT a distributed axis
+    and this is effectively a reduction over the 1-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array
+
+    Suppose that we do:
+
+      res = linal.max(a, axis=2, comm)
+
+    then res is now a rank-2 array as follows
+
+       rank 0  3, 6, 4
+               4, 5, 5
+      =======================
+       rank 1  4, -2, 5
+               8, 4, 6
+               2, 8, 9
+               4, -3, -4
+      =======================
+       rank 2  2, 8, 9
+
+    because the axis queried for the max is NOT a distributed axis
+    and this is effectively a reduction over the 1-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array
+
     '''
 
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
@@ -46,140 +193,142 @@ def _basic_max_via_python(a, axis=None, out=None, comm=None):
         local_max = np.max(a, axis=axis)
 
         if axis is None:
-            global_max = comm.allreduce(local_max, op=MPI.MAX)
-            return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
+            return comm.allreduce(local_max, op=MPI.MAX)
         elif axis==0:
             global_max = np.zeros_like(local_max, dtype=local_max.dtype)
             comm.Allreduce(local_max, global_max, op=MPI.MAX)
-            return utils.copy_result_to_out_if_not_none_else_return(global_max, out)
+            return global_max
         else:
-            return utils.copy_result_to_out_if_not_none_else_return(local_max, out)
+            return local_max
 
     else:
-        return np.max(a, axis=axis, out=out)
+        return np.max(a, axis=axis)
 
-# ----------------------------------------------------
-def _basic_min_via_python(a, axis=None, out=None, comm=None):
-    '''
-    Return the minimum of a possibly distributed array or minimum along an axis.
 
-    Parameters:
-        a (np.ndarray): Local input data
-        axis: None or int
-        out (np.ndarray): Output array in which to place the result (default: None)
-        comm (MPI_Comm): MPI communicator (default: None)
-        IMPROVE THIS
 
-    Returns:
-        min (np.ndarray or scalar):
-        IMPROVE THIS
+# # ----------------------------------------------------
+# def _basic_min_via_python(a, axis=None, out=None, comm=None):
+#     '''
+#     Return the minimum of a possibly distributed array or minimum along an axis.
 
-    Preconditions:
-      - a is at most a rank-3 tensor
-      - if a is distributed, a is distributed over the 0th axis
-      - if out != None, then it must be ...
-      - if axis != None, then it must be either an int or a tuple of ints
+#     Parameters:
+#         a (np.ndarray): Local input data
+#         axis: None or int
+#         out (np.ndarray): Output array in which to place the result (default: None)
+#         comm (MPI_Comm): MPI communicator (default: None)
+#         IMPROVE THIS
 
-    Postconditions:
-      - a and comm are not modified
-      - if out is None on entry, it remains None on exit
-    '''
+#     Returns:
+#         min (np.ndarray or scalar):
+#         IMPROVE THIS
 
-    assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    utils.assert_axis_is_correct_type_and_within_range(a, axis)
+#     Preconditions:
+#       - a is at most a rank-3 tensor
+#       - if a is distributed, a is distributed over the 0th axis
+#       - if out != None, then it must be ...
+#       - if axis != None, then it must be either an int or a tuple of ints
 
-    if comm is not None and comm.Get_size() > 1:
-        import mpi4py
-        from mpi4py import MPI
+#     Postconditions:
+#       - a and comm are not modified
+#       - if out is None on entry, it remains None on exit
+#     '''
 
-        local_min = np.min(a, axis=axis)
+#     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
+#     utils.assert_axis_is_correct_type_and_within_range(a, axis)
 
-        if axis is None:
-            global_min = comm.allreduce(local_min, op=MPI.MIN)
-            return utils.copy_result_to_out_if_not_none_else_return(global_min, out)
-        elif axis==0:
-            global_min = np.zeros_like(local_min, dtype=local_min.dtype)
-            comm.Allreduce(local_min, global_min, op=MPI.MIN)
-            return utils.copy_result_to_out_if_not_none_else_return(global_min, out)
-        elif axis==1:
-            return utils.copy_result_to_out_if_not_none_else_return(local_min, out)
-        elif axis==2:
-            return utils.copy_result_to_out_if_not_none_else_return(local_min, out)
+#     if comm is not None and comm.Get_size() > 1:
+#         import mpi4py
+#         from mpi4py import MPI
 
-    else:
-        return np.min(a, axis=axis, out=out)
+#         local_min = np.min(a, axis=axis)
 
-# ----------------------------------------------------
-def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
-    '''
-    Return the mean of a possibly distributed array or mean along an axis.
+#         if axis is None:
+#             global_min = comm.allreduce(local_min, op=MPI.MIN)
+#             return utils.copy_result_to_out_if_not_none_else_return(global_min, out)
+#         elif axis==0:
+#             global_min = np.zeros_like(local_min, dtype=local_min.dtype)
+#             comm.Allreduce(local_min, global_min, op=MPI.MIN)
+#             return utils.copy_result_to_out_if_not_none_else_return(global_min, out)
+#         elif axis==1:
+#             return utils.copy_result_to_out_if_not_none_else_return(local_min, out)
+#         elif axis==2:
+#             return utils.copy_result_to_out_if_not_none_else_return(local_min, out)
 
-    Parameters:
-        a (np.ndarray): Local input data
-        dtype (data-type): Type to use in computing the mean (by default, uses the input dtype, float32 for integer inputs)
-        out (np.ndarray): Output array in which to place the result (default: None)
-        comm (MPI_Comm): MPI communicator (default: None)
+#     else:
+#         return np.min(a, axis=axis, out=out)
 
-    Returns:
-        mean (np.ndarray or scalar): The mean of the array, returned to all processes.
-    '''
-    if comm is not None and comm.Get_size() > 1:
-        import mpi4py
-        from mpi4py import MPI
+# # ----------------------------------------------------
+# def _basic_mean_via_python(a, dtype=None, out=None, comm=None):
+#     '''
+#     Return the mean of a possibly distributed array or mean along an axis.
 
-        n_procs = comm.Get_size()
+#     Parameters:
+#         a (np.ndarray): Local input data
+#         dtype (data-type): Type to use in computing the mean (by default, uses the input dtype, float32 for integer inputs)
+#         out (np.ndarray): Output array in which to place the result (default: None)
+#         comm (MPI_Comm): MPI communicator (default: None)
 
-        local_size = a.size
-        global_size = comm.allreduce(local_size, op=MPI.SUM)
+#     Returns:
+#         mean (np.ndarray or scalar): The mean of the array, returned to all processes.
+#     '''
+#     if comm is not None and comm.Get_size() > 1:
+#         import mpi4py
+#         from mpi4py import MPI
 
-        local_sum = np.sum(a)
-        global_sum = comm.allreduce(local_sum, op=MPI.SUM)
+#         n_procs = comm.Get_size()
 
-        if global_size == 0:
-            global_mean = np.nan
-            warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
-        else:
-            global_mean = global_sum / global_size
+#         local_size = a.size
+#         global_size = comm.allreduce(local_size, op=MPI.SUM)
 
-        return utils.copy_result_to_out_if_not_none_else_return(global_mean, out)
+#         local_sum = np.sum(a)
+#         global_sum = comm.allreduce(local_sum, op=MPI.SUM)
 
-    else:
-        return np.mean(a, dtype=dtype, out=out)
+#         if global_size == 0:
+#             global_mean = np.nan
+#             warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
+#         else:
+#             global_mean = global_sum / global_size
 
-# ----------------------------------------------------
-def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
-    '''
-    Return the stddev of a possibly distributed array or stddev along an axis.
+#         return utils.copy_result_to_out_if_not_none_else_return(global_mean, out)
 
-    Parameters:
-        a (np.ndarray): Local input data
-        dtype (data-type): Type to use in computing the standard deviation (by default, uses the input dtype, float32 for integer inputs)
-        out (np.ndarray): Output array in which to place the result (default: None)
-        ddof (int): Delta degrees of freedom used in divisor N - ddof (default: 0)
-        comm (MPI_Comm): MPI communicator (default: None)
+#     else:
+#         return np.mean(a, dtype=dtype, out=out)
 
-    Returns:
-        mean (np.ndarray or scalar): The mean of the array, returned to all processes.
-    '''
-    if comm is not None and comm.Get_size() > 1:
-        import mpi4py
-        from mpi4py import MPI
+# # ----------------------------------------------------
+# def _basic_std_via_python(a, dtype=None, out=None, ddof=0, comm=None):
+#     '''
+#     Return the stddev of a possibly distributed array or stddev along an axis.
 
-        n_procs = comm.Get_size()
+#     Parameters:
+#         a (np.ndarray): Local input data
+#         dtype (data-type): Type to use in computing the standard deviation (by default, uses the input dtype, float32 for integer inputs)
+#         out (np.ndarray): Output array in which to place the result (default: None)
+#         ddof (int): Delta degrees of freedom used in divisor N - ddof (default: 0)
+#         comm (MPI_Comm): MPI communicator (default: None)
 
-        # Get total number of elements
-        global_size = comm.allreduce(a.size, op=MPI.SUM)
+#     Returns:
+#         mean (np.ndarray or scalar): The mean of the array, returned to all processes.
+#     '''
+#     if comm is not None and comm.Get_size() > 1:
+#         import mpi4py
+#         from mpi4py import MPI
 
-        # Get standard deviation
-        global_mean = _basic_mean_via_python(a, dtype=dtype, comm=comm)
-        local_sq_diff = np.sum(np.square(a - global_mean))
-        global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
-        std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
+#         n_procs = comm.Get_size()
 
-        return utils.copy_result_to_out_if_not_none_else_return(std_dev, out)
+#         # Get total number of elements
+#         global_size = comm.allreduce(a.size, op=MPI.SUM)
 
-    else:
-        return np.std(a, dtype=dtype, out=out, ddof=ddof)
+#         # Get standard deviation
+#         global_mean = _basic_mean_via_python(a, dtype=dtype, comm=comm)
+#         local_sq_diff = np.sum(np.square(a - global_mean))
+#         global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
+#         std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
+
+#         return utils.copy_result_to_out_if_not_none_else_return(std_dev, out)
+
+#     else:
+#         return np.std(a, dtype=dtype, out=out, ddof=ddof)
+
 
 # ----------------------------------------------------
 def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
