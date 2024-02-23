@@ -191,9 +191,6 @@ def _thin_svd_auto_select_algo(M, comm):
     # for now this is it, improve later
     return _thin_svd_via_method_of_snaphosts(M, comm)
 
-# ---------------------
-# the public function
-# ---------------------
 def _thin_svd(M, comm=None, method='auto'):
   '''
   Preconditions:
