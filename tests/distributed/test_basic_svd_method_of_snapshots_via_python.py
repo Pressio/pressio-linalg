@@ -7,7 +7,7 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
-from pressiolinalg.linalg import _basic_svd_method_of_snapshots_impl_via_python
+from pressiolinalg.linalg import _thin_svd
 
 
 def distribute_array(global_array, comm):
@@ -47,7 +47,7 @@ def test_basic_svd_method_of_snapshots_impl_via_python():
     rank = comm.Get_rank()
     num_processes = comm.Get_size()
     global_snapshots, local_snapshots = create_snapshots(comm)
-    local_modes, mpi_sigma = _basic_svd_method_of_snapshots_impl_via_python(local_snapshots, comm)
+    local_modes, mpi_sigma = _thin_svd(local_snapshots, comm, method='method_of_snapshots')
 
     # Get serial solution
     test_modes, test_sigma = get_serial_solution(global_snapshots)
@@ -59,7 +59,7 @@ def test_basic_svd_method_of_snapshots_impl_via_python():
 
 def test_basic_svd_serial():
     snapshots = np.array([np.arange(0, 3)]).transpose()
-    modes, sigma = _basic_svd_method_of_snapshots_impl_via_python(snapshots)
+    modes, sigma = _thin_svd(snapshots, method='method_of_snapshots')
     test_modes, test_sigma = get_serial_solution(snapshots)
     assert np.allclose(modes, test_modes)
     assert sigma == test_sigma

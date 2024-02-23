@@ -164,7 +164,7 @@ def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
     return
 
 # ----------------------------------------------------
-def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm=None):
+def _thin_svd_via_method_of_snaphosts(snapshots, comm=None):
     '''
     Performs SVD via method of snapshots.
 
@@ -187,6 +187,40 @@ def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm=None):
     print("function modes:", modes[:, ordering])
     return modes[:, ordering], sigma[ordering]
 
+def _thin_svd_auto_select_algo(M, comm):
+    # for now this is it, improve later
+    return _thin_svd_via_method_of_snaphosts(M, comm)
+
+# ---------------------
+# the public function
+# ---------------------
+def _thin_svd(M, comm=None, method='auto'):
+  '''
+  Preconditions:
+    - M is rank-2 tensor
+    - if M is distributed, M is distributed over its 0-th axis (row distribution)
+    - allowed choices for method are "auto", "method_of_snapshots"
+
+  Returns:
+    - left singular vectors and singular values
+
+  Postconditions:
+    - M is not modified
+    - if M is distributed, the left singular vectors have the same distributions
+  '''
+  assert method in ['auto', 'method_of_snapshots'], \
+      "thin_svd currently supports only method = 'auto' or 'method_of_snapshots'"
+
+  # if user wants a specific algorithm, then call it
+  if method == 'method_of_snapshots':
+      return _thin_svd_via_method_of_snaphosts(M, comm)
+
+  # otherwise we have some freedom to decide
+  if comm is not None and comm.Get_size() > 1:
+      return _thin_svd_auto_select_algo(M, comm)
+  else:
+    return np.linalg.svd(M, full_matrices=False, compute_uv=True)
+
 # ----------------------------------------------------
 # ----------------------------------------------------
 
@@ -194,5 +228,4 @@ def _basic_svd_method_of_snapshots_impl_via_python(snapshots, comm=None):
 max = _basic_max_via_python
 min = _basic_min_via_python
 product = _basic_product_via_python
-svd_method_of_snapshots = _basic_svd_method_of_snapshots_impl_via_python
-
+thin_svd = _thin_svd
