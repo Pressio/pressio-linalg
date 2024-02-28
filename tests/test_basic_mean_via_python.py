@@ -17,10 +17,10 @@ from pressiolinalg.linalg import _basic_mean_via_python
 ###  Set up problem  ###
 ########################
 
-def _mean_setup(ndim, dtype=None, out=None, comm=None):
+def _mean_setup(ndim, dtype=None, axis=None, comm=None):
     local_arr, global_arr = utils.generate_local_and_global_arrays(ndim, comm)
-    mean_result = _basic_mean_via_python(local_arr, dtype=dtype, out=out, comm=comm)
-    return mean_result, np.mean(global_arr, dtype=dtype)
+    mean_result = _basic_mean_via_python(local_arr, dtype=dtype, axis=axis, comm=comm)
+    return mean_result, np.mean(global_arr, dtype=dtype, axis=axis)
 
 
 ########################
@@ -53,9 +53,17 @@ def test_python_mean_array_mpi():
     result_02, expected_02 = _mean_setup(ndim=3, comm=comm)
     assert np.allclose(result_02, expected_02)
 
-    test_out = np.empty(1)
-    _, expected_03 = _mean_setup(ndim=3, out=test_out, comm=comm)
-    assert np.allclose(test_out, expected_03)
+@pytest.mark.mpi(min_size=3)
+def test_python_mean_array_axis_mpi():
+    comm = MPI.COMM_WORLD
+    result_01, expected_01 = _mean_setup(ndim=2, axis=0, comm=comm)
+    assert np.allclose(result_01, expected_01)
+
+    result_02, expected_02 = _mean_setup(ndim=3, axis=1, comm=comm)
+    assert len(np.setdiff1d(result_02, expected_02)) == 0
+
+    result_03, expected_03 = _mean_setup(ndim=3, axis=2, comm=comm)
+    assert len(np.setdiff1d(result_03, expected_03)) == 0
 
 def test_python_mean_serial():
     vector = np.random.rand(10)
@@ -69,4 +77,5 @@ if __name__ == "__main__":
     test_python_mean_null_vector_mpi()
     test_python_mean_vector_mpi()
     test_python_mean_array_mpi()
+    test_python_mean_array_axis_mpi()
     test_python_mean_serial()
