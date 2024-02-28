@@ -88,7 +88,7 @@ def _basic_max_via_python(a, axis=None, comm=None):
 
     because the axis queried for the max is NOT a distributed axis
     so this operation is purely local and the result has the same distribution
-    as the original array
+    as the original array.
 
 
     Example 3:
@@ -158,7 +158,7 @@ def _basic_max_via_python(a, axis=None, comm=None):
     because the axis queried for the max is NOT a distributed axis
     and this is effectively a reduction over the 1-th axis
     so this operation is purely local and the result has the same distribution
-    as the original array
+    as the original array.
 
     Suppose that we do:
 
@@ -179,7 +179,7 @@ def _basic_max_via_python(a, axis=None, comm=None):
     because the axis queried for the max is NOT a distributed axis
     and this is effectively a reduction over the 1-th axis
     so this operation is purely local and the result has the same distribution
-    as the original array
+    as the original array.
 
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
@@ -284,7 +284,7 @@ def _basic_min_via_python(a, axis=None, comm=None):
 
     because the axis queried for the min is NOT a distributed axis
     so this operation is purely local and the result has the same distribution
-    as the original array
+    as the original array.
 
 
     Example 3:
@@ -353,7 +353,7 @@ def _basic_min_via_python(a, axis=None, comm=None):
     because the axis queried for the min is NOT a distributed axis
     and this is effectively a reduction over the 1-th axis
     so this operation is purely local and the result has the same distribution
-    as the original array
+    as the original array.
 
     Suppose that we do:
 
@@ -374,7 +374,7 @@ def _basic_min_via_python(a, axis=None, comm=None):
     because the axis queried for the min is NOT a distributed axis
     and this is effectively a reduction over the 1-th axis
     so this operation is purely local and the result has the same distribution
-    as the original array
+    as the original array.
 
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
@@ -404,17 +404,180 @@ def _basic_min_via_python(a, axis=None, comm=None):
 # # ----------------------------------------------------
 def _basic_mean_via_python(a, dtype=None, axis=None, comm=None):
     '''
-    Return the mean of a possibly distributed array or mean along an axis.
+    Return the mean of a possibly distributed array over a given axis.
 
     Parameters:
-        a (np.ndarray): Local input data
-        dtype (data-type): Type to use in computing the mean (by default, uses the input dtype, float32 for integer inputs)
-        axis (np.ndarray): Axis along which to calculate the mean (default: None)
+        a (np.ndarray): input data
+        dtype (data-type): Type to use in computing the mean (default: float64 for int arrays, same type as input for float arrays)
+        axis (None or int): the axis along which to compute the mean. If None, computes the mean of the flattened array. (default: None)
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        mean (np.ndarray or scalar): The mean of the array, returned to all processes.
-        FIX
+        if axis==None, returns a scalar
+        if axis is not None, returns an array of dimension a.dim - 1
+
+    Preconditions:
+      - a is at most a rank-3 tensor and
+      - if a is distributed, it must be so along the 0-th axis,
+        and every rank must have the same a.shape[1] and a.shape[2]
+      - if axis != None, then it must be an int
+
+    Postconditions:
+      - a and comm are not modified
+
+    Example 1:
+    **********
+
+       rank 0  2.2
+               3.3
+      =======================
+       rank 1  40.
+               51.
+               -24.
+               45.
+      =======================
+       rank 2  -4.
+
+    res = pla.mean(a, comm)
+    then ALL ranks will contain res = 16.21
+
+
+    Example 2:
+    **********
+
+       rank 0  2.2  1.3  4.
+               3.3  5.0  33.
+      =======================
+       rank 1  40.  -2.  -4.
+               51.   4.   6.
+               -24.  8.   9.
+               45.  -3.  -4.
+      =======================
+       rank 2  -4.  8.   9.
+
+    Suppose that we do:
+
+       res = pla.mean(a, axis=0, comm)
+
+    then every rank will contain the same res which is:
+
+       res  = ([16.21,  3.04,  7.57])
+
+    this is because the mean is queried for the 0-th axis which is the
+    axis along which the data array is distributed.
+    So this operation must be a collective operation.
+
+    Suppose that we do:
+
+      res = pla.mean(a, axis=1, comm)
+
+    then res is now a rank-1 array as follows
+
+       rank 0  2.5
+               13.77
+      =======================
+       rank 1  11.33
+               20.33
+               -2.33
+               12.67
+      =======================
+       rank 2  4.33
+
+    because the axis queried for the mean is NOT a distributed axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+
+    Example 3:
+    **********
+
+                / 3.  6. -7.
+       rank 0  /2.  1.  4.
+               --------------
+
+                / 4.  -1.  5.
+               /3.  5.  3.
+      =======================
+
+       rank 1   / 2.  -2.  5.
+               /4.  -2.  -4.
+               --------------
+
+                / 8.  -1.  0.
+               /5.   4.   6.
+               --------------
+
+                / 2.   0.  3.
+               /-2.   8.   9.
+               --------------
+
+                / 1.  -6.  1.
+               /4.  -3.  -4.
+      =======================
+
+       rank 2   / 2.   0.  3.
+               /-4.  8.   9.
+               --------------
+
+    Suppose that we do:
+
+       res = pla.mean(a, axis=0, comm)
+
+    then this is effectively a reduction over the 0-th axis
+    and every rank will contain the same res which is a rank-2 array as follows
+
+          ([[ 1.71,  3.14],
+            [ 3.  , -0.57],
+            [ 3.29,  1.43]])
+
+    this is because the mean is queried for the 0-th axis which is the
+    axis along which the data array is distributed.
+    So this operation must be a collective operation and we know that
+    memory-wise it is feasible to hold because this is no larger than the
+    local allocation on each rank.
+
+    Suppose that we do:
+
+      res = pla.mean(a, axis=1, comm)
+
+    then res is now a rank-2 array as follows
+
+       rank 0   2.33,  0.67
+                3.67, -0.57
+      =======================
+       rank 1  -0.67,  1.67
+                5.  ,  2.33
+                5.  ,  1.67
+               -1.  , -1.33
+      =======================
+       rank 2   4.33,  1.67
+
+    because the axis queried for the mean is NOT a distributed axis
+    and this is effectively a reduction over the 1-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array
+
+    Suppose that we do:
+
+      res = pla.mean(a, axis=2, comm)
+
+    then res is now a rank-2 array as follows
+
+      rank 0   2.5,  3.5, -1.5
+               3.5,  2. ,  4.
+      ===========================
+      rank 1   3. , -2. ,  0.5
+               6.5,  1.5,  3.
+               0. ,  4. ,  6.
+               2.5, -4.5, -1.5
+      ===========================
+      rank 2   -1. ,  4. ,  6.
+
+    because the axis queried for the mean is NOT a distributed axis
+    and this is effectively a reduction over the 1-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array
+
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_correct_type_and_within_range(a, axis)
@@ -423,26 +586,21 @@ def _basic_mean_via_python(a, dtype=None, axis=None, comm=None):
         import mpi4py
         from mpi4py import MPI
 
+        local_size = a.size if axis is None else a.shape[0]
+        global_size = comm.allreduce(local_size, op=MPI.SUM)
+
+        if global_size == 0:
+            warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
+            return np.nan
+
         if axis is None:
-            local_size = a.size
-            global_size = comm.allreduce(local_size, op=MPI.SUM)
-
-            if global_size == 0:
-                warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
-                return np.nan
-
             local_sum = np.sum(a)
             global_sum = comm.allreduce(local_sum, op=MPI.SUM)
-
             return global_sum / global_size
 
         elif axis == 0:
-            local_size = a.shape[0]
-            global_size = comm.allreduce(local_size, op=MPI.SUM)
-
             local_sum = np.sum(a, axis=axis)
             global_sum = np.zeros_like(np.mean(a, axis=axis))
-
             comm.Allreduce(local_sum, global_sum, op=MPI.SUM)
             return global_sum / global_size
 
@@ -455,17 +613,178 @@ def _basic_mean_via_python(a, dtype=None, axis=None, comm=None):
 # ----------------------------------------------------
 def _basic_std_via_python(a, dtype=None, axis=None, ddof=0, comm=None):
     '''
-    Return the stddev of a possibly distributed array or stddev along an axis.
+    Return the standard deviation of a possibly distributed array over a given axis.
 
     Parameters:
-        a (np.ndarray): Local input data
-        dtype (data-type): Type to use in computing the standard deviation (by default, uses the input dtype, float32 for integer inputs)
-        axis TODO
+        a (np.ndarray): input data
+        dtype (data-type): Type to use in computing the mean (default: float64 for int arrays, same type as input for float arrays)
+        axis (None or int): the axis along which to compute the mean. If None, computes the mean of the flattened array. (default: None)
         ddof (int): Delta degrees of freedom used in divisor N - ddof (default: 0)
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        mean (np.ndarray or scalar): The mean of the array, returned to all processes.
+        if axis==None, returns a scalar
+        if axis is not None, returns an array of dimension a.dim - 1
+
+    Preconditions:
+      - a is at most a rank-3 tensor and
+      - if a is distributed, it must be so along the 0-th axis,
+        and every rank must have the same a.shape[1] and a.shape[2]
+      - if axis != None, then it must be an int
+
+    Postconditions:
+      - a and comm are not modified
+
+    Example 1:
+    **********
+
+       rank 0  2.2
+               3.3
+      =======================
+       rank 1  40.
+               51.
+               -24.
+               45.
+      =======================
+       rank 2  -4.
+
+    res = pla.std(a, comm)
+    then ALL ranks will contain res = 26.71
+
+    Example 2:
+    **********
+
+       rank 0  2.2  1.3  4.
+               3.3  5.0  33.
+      =======================
+       rank 1  40.  -2.  -4.
+               51.   4.   6.
+               -24.  8.   9.
+               45.  -3.  -4.
+      =======================
+       rank 2  -4.  8.   9.
+
+    Suppose that we do:
+
+       res = pla.std(a, axis=0, comm)
+
+    then every rank will contain the same res which is:
+
+       res  = ([26.71,  4.12 , 11.55])
+
+    this is because the standard deviation is queried for the 0-th axis which is the
+    axis along which the data array is distributed.
+    So this operation must be a collective operation.
+
+    Suppose that we do:
+
+      res = pla.std(a, axis=1, comm)
+
+    then res is now a rank-1 array as follows
+
+       rank 0  1.12
+               13.62
+      =======================
+       rank 1  20.29
+               21.70
+               15.33
+               22.87
+      =======================
+       rank 2  5.91
+
+    because the axis queried for the standard deviation is NOT a distributed axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+    Example 3:
+    **********
+
+                / 3.  6. -7.
+       rank 0  /2.  1.  4.
+               --------------
+
+                / 4.  -1.  5.
+               /3.  5.  3.
+      =======================
+
+       rank 1   / 2.  -2.  5.
+               /4.  -2.  -4.
+               --------------
+
+                / 8.  -1.  0.
+               /5.   4.   6.
+               --------------
+
+                / 2.   0.  3.
+               /-2.   8.   9.
+               --------------
+
+                / 1.  -6.  1.
+               /4.  -3.  -4.
+      =======================
+
+       rank 2   / 2.   0.  3.
+               /-4.  8.   9.
+               --------------
+
+    Suppose that we do:
+
+       res = pla.std(a, axis=0, comm)
+
+    then this is effectively a reduction over the 0-th axis
+    and every rank will contain the same res which is a rank-2 array as follows
+
+      ([[3.14934396, 2.16653584],
+       [4.14039336, 3.28881841],
+       [5.06287004, 3.84919817]])
+
+    this is because the standard deviation is queried for the 0-th axis which is the
+    axis along which the data array is distributed.
+    So this operation must be a collective operation and we know that
+    memory-wise it is feasible to hold because this is no larger than the
+    local allocation on each rank.
+
+    Suppose that we do:
+
+      res = pla.std(a, axis=1, comm)
+
+    then res is now a rank-2 array as follows
+
+       rank 0   1.24721913, 5.55777733
+                0.94280904, 2.62466929
+      ===================================
+       rank 1   3.39934634, 2.86744176
+                0.81649658, 4.02768199
+                4.96655481, 1.24721913
+                3.55902608, 3.29983165
+      ===================================
+       rank 2   5.90668172, 1.24721913
+
+    because the axis queried for the standard deviation is NOT a distributed axis
+    and this is effectively a reduction over the 1-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+    Suppose that we do:
+
+      res = pla.std(a, axis=2, comm)
+
+    then res is now a rank-2 array as follows
+
+       rank 0   0.5, 2.5, 5.5
+                0.5, 3. , 1.
+      ===========================
+       rank 1   1. , 0. , 4.5
+                1.5, 2.5, 3.
+                2. , 4. , 3.
+                1.5, 1.5, 2.5
+      ===========================
+       rank 2   3. , 4. , 3.
+
+    because the axis queried for the standard deviation is NOT a distributed axis
+    and this is effectively a reduction over the 1-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_correct_type_and_within_range(a, axis)
@@ -474,25 +793,22 @@ def _basic_std_via_python(a, dtype=None, axis=None, ddof=0, comm=None):
         import mpi4py
         from mpi4py import MPI
 
-        if axis is None:
-            # Get total number of elements
-            global_size = comm.allreduce(a.size, op=MPI.SUM)
+        # Calculate quanities shared among axis=None or axis=0
+        if axis is None or axis == 0:
+            global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
+            local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
+            local_size = a.size if axis is None else a.shape[0]
+            global_size = comm.allreduce(local_size, op=MPI.SUM)
 
-            # Get standard deviation
-            global_mean = _basic_mean_via_python(a, dtype=dtype, comm=comm)
-            local_sq_diff = np.sum(np.square(a - global_mean))
+        if axis is None:
             global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
             global_std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
-
             return global_std_dev
 
         elif axis == 0:
-            global_size = comm.allreduce(a.shape[0], op=MPI.SUM)
-            global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
-            local_sq_diff_on_axis = np.sum(np.square(a - global_mean), axis=axis)
-            global_sq_diff_on_axis = np.zeros_like(local_sq_diff_on_axis)
-            comm.Allreduce(local_sq_diff_on_axis, global_sq_diff_on_axis, op=MPI.SUM)
-            global_std_dev = np.sqrt(global_sq_diff_on_axis / (global_size - ddof))
+            global_sq_diff = np.zeros_like(local_sq_diff)
+            comm.Allreduce(local_sq_diff, global_sq_diff, op=MPI.SUM)
+            global_std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
             return global_std_dev
 
         else:

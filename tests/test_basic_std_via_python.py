@@ -7,7 +7,7 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
-import tests.test_utils as utils
+from tests import test_utils
 from pressiolinalg.linalg import _basic_std_via_python
 
 
@@ -17,7 +17,7 @@ from pressiolinalg.linalg import _basic_std_via_python
 
 def _std_setup(ndim, dtype=None, axis=None, ddof=0, comm=None):
     n_procs = comm.Get_size()
-    local_arr, global_arr = utils.generate_local_and_global_arrays(ndim, comm)
+    local_arr, global_arr = test_utils.generate_random_local_and_global_arrays(ndim, comm)
 
     std_result = _basic_std_via_python(local_arr, dtype=dtype, axis=axis, ddof=ddof, comm=comm)
     return std_result, np.std(global_arr, dtype=dtype, axis=axis, ddof=ddof)
@@ -26,6 +26,46 @@ def _std_setup(ndim, dtype=None, axis=None, ddof=0, comm=None):
 ########################
 ###   Define Tests   ###
 ########################
+
+@pytest.mark.mpi(min_size=3)
+def test_python_std_examples_mpi():
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    slices = [(0,2), (2,6), (6,7)]
+
+    # Example 1
+    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=1)
+    res_ex1 = _basic_std_via_python(local_arr_1, comm=comm)
+    np.testing.assert_almost_equal(res_ex1, np.std(global_arr_1))
+
+    # Example 2
+    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=2)
+
+    res_ex2_ax0 = _basic_std_via_python(local_arr_2, axis=0, comm=comm)
+    exp_ex2_ax0 = np.std(global_arr_2, axis=0)
+    assert np.allclose(res_ex2_ax0, exp_ex2_ax0)
+
+    res_ex2_ax1 = _basic_std_via_python(local_arr_2, axis=1, comm=comm)
+    full_ex2_ax1_std = np.std(global_arr_2, axis=1)
+    exp_ex2_ax1 = full_ex2_ax1_std[slices[rank][0]:slices[rank][1]]
+    assert np.allclose(res_ex2_ax1, exp_ex2_ax1)
+
+    # Example 3
+    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=3)
+
+    res_ex3_ax0 = _basic_std_via_python(local_arr_3, axis=0, comm=comm)
+    exp_ex3_ax0 = np.std(global_arr_3, axis=0)
+    assert np.allclose(res_ex3_ax0, exp_ex3_ax0)
+
+    res_ex3_ax1 = _basic_std_via_python(local_arr_3, axis=1, comm=comm)
+    full_ex3_ax1_std = np.std(global_arr_3, axis=1)
+    exp_ex3_ax1 = full_ex3_ax1_std[slices[rank][0]:slices[rank][1],:]
+    assert np.allclose(res_ex3_ax1, exp_ex3_ax1)
+
+    res_ex3_ax2 = _basic_std_via_python(local_arr_3, axis=2, comm=comm)
+    full_ex3_ax2_std = np.std(global_arr_3, axis=2)
+    exp_ex3_ax2 = full_ex3_ax2_std[slices[rank][0]:slices[rank][1],:]
+    assert np.allclose(res_ex3_ax2, exp_ex3_ax2)
 
 @pytest.mark.mpi(min_size=3)
 def test_python_std_vector_mpi():
@@ -68,6 +108,7 @@ def test_python_std_serial():
 
 
 if __name__ == "__main__":
+    test_python_std_examples_mpi()
     test_python_std_vector_mpi()
     test_python_std_array_mpi()
     test_python_std_array_axis_mpi()
