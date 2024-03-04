@@ -1,8 +1,6 @@
 import numpy as np
 
-def assert_axis_is_correct_type_and_within_range(a, axis):
+def assert_axis_is_none_or_within_rank(a, axis):
+    assert isinstance(axis, int) or axis is None, "axis must be an int or None"
     if axis is not None:
-        if isinstance(axis, int):
-            assert axis <= a.ndim
-        else:
-            raise ValueError("axis must be an int")
+        assert axis < a.ndim, "axis must be < rank of the array"

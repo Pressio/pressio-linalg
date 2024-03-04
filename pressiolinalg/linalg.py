@@ -10,7 +10,7 @@ from pressiolinalg import utils
 
 # ----------------------------------------------------
 
-def _basic_max_via_python(a, axis=None, comm=None):
+def _basic_max_via_python(a: np.ndarray, axis=None, comm=None):
     '''
     Return the maximum of a possibly distributed array or maximum along an axis.
 
@@ -183,9 +183,13 @@ def _basic_max_via_python(a, axis=None, comm=None):
 
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    utils.assert_axis_is_correct_type_and_within_range(a, axis)
+    utils.assert_axis_is_none_or_within_rank(a, axis)
 
-    if comm is not None and comm.Get_size() > 1:
+    if comm is None or comm.Get_size() == 1:
+        return np.max(a, axis=axis)
+
+    else:
+
         import mpi4py
         from mpi4py import MPI
 
@@ -202,11 +206,9 @@ def _basic_max_via_python(a, axis=None, comm=None):
         else:
             return local_max
 
-    else:
-        return np.max(a, axis=axis)
 
 # # ----------------------------------------------------
-def _basic_min_via_python(a, axis=None, comm=None):
+def _basic_min_via_python(a: np.ndarray, axis=None, comm=None):
     '''
     Return the minimum of a possibly distributed array or minimum along an axis.
 
@@ -378,9 +380,11 @@ def _basic_min_via_python(a, axis=None, comm=None):
 
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    utils.assert_axis_is_correct_type_and_within_range(a, axis)
+    utils.assert_axis_is_none_or_within_rank(a, axis)
 
-    if comm is not None and comm.Get_size() > 1:
+    if comm is None or comm.Get_size() == 1:
+        return np.min(a, axis=axis)
+    else:
         import mpi4py
         from mpi4py import MPI
 
@@ -397,12 +401,9 @@ def _basic_min_via_python(a, axis=None, comm=None):
         else:
             return local_min
 
-    else:
-        return np.min(a, axis=axis)
-
 
 # # ----------------------------------------------------
-def _basic_mean_via_python(a, dtype=None, axis=None, comm=None):
+def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
     '''
     Return the mean of a possibly distributed array over a given axis.
 
@@ -580,9 +581,13 @@ def _basic_mean_via_python(a, dtype=None, axis=None, comm=None):
 
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    utils.assert_axis_is_correct_type_and_within_range(a, axis)
+    utils.assert_axis_is_none_or_within_rank(a, axis)
 
-    if comm is not None and comm.Get_size() > 1:
+    if comm is None or comm.Get_size() == 1:
+        return np.mean(a, dtype=dtype, axis=axis)
+
+    else:
+
         import mpi4py
         from mpi4py import MPI
 
@@ -607,11 +612,8 @@ def _basic_mean_via_python(a, dtype=None, axis=None, comm=None):
         else:
             return np.mean(a, dtype=dtype, axis=axis)
 
-    else:
-        return np.mean(a, dtype=dtype, axis=axis)
-
 # ----------------------------------------------------
-def _basic_std_via_python(a, dtype=None, axis=None, ddof=0, comm=None):
+def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, comm=None):
     '''
     Return the standard deviation of a possibly distributed array over a given axis.
 
@@ -787,9 +789,11 @@ def _basic_std_via_python(a, dtype=None, axis=None, ddof=0, comm=None):
     as the original array.
     '''
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
-    utils.assert_axis_is_correct_type_and_within_range(a, axis)
+    utils.assert_axis_is_none_or_within_rank(a, axis)
 
-    if comm is not None and comm.Get_size() > 1:
+    if comm is None or comm.Get_size() == 1:
+        return np.std(a, dtype=dtype, axis=axis, ddof=ddof)
+    else:
         import mpi4py
         from mpi4py import MPI
 
@@ -813,10 +817,6 @@ def _basic_std_via_python(a, dtype=None, axis=None, ddof=0, comm=None):
 
         else:
             return np.std(a, dtype=dtype, axis=axis, ddof=ddof)
-
-    else:
-        return np.std(a, dtype=dtype, axis=axis, ddof=ddof)
-
 
 # ----------------------------------------------------
 def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
