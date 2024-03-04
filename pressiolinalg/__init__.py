@@ -1,5 +1,10 @@
 """Root module of your package"""
+import os
 
-from pkg_resources import get_distribution
+topdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-__version__ = get_distribution('pressio-linalg').version
+def get_version():
+  with open(os.path.join(topdir, "version.txt")) as f:
+    return f.read()
+
+__version__ = get_version()
