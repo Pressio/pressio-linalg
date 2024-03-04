@@ -78,4 +78,4 @@ jobs:
 
       - name: Test package (MPI, n=3)
         run: |
-          mpirun -n 3 python -m pytest tests/* --with-mpi
+          mpirun -n 3 python -m pytest --with-mpi
