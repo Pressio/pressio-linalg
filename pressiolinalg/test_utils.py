@@ -10,7 +10,7 @@ except ModuleNotFoundError:
 ########             MPI Helpers             ########
 #####################################################
 
-def distribute_array(global_array, comm, axis=0):
+def distribute_array_impl(global_array, comm, axis=0):
     '''
     Splts an np.array and distributes to all available MPI processes as evenly as possible
 
@@ -44,42 +44,26 @@ def distribute_array(global_array, comm, axis=0):
 
     return local_array
 
-def generate_random_local_and_global_arrays(ndim, comm, dim1=7, dim2=5, dim3=6):
+def generate_random_local_and_global_arrays_impl(shape, comm):
     '''Randomly generates both local and global arrays using optional dim<x> arguments to specify the shape'''
     # Get comm info
     rank = comm.Get_rank()
 
     # Create global_array (using optional dim<x> arguments)
-    if rank == 0:
-        if ndim == 0:
-            global_arr = np.empty(0)
-        elif ndim == 1:
-            global_arr = np.random.rand(dim1) if rank == 0 else np.empty(dim1)
-        elif ndim == 2:
-            global_arr = np.random.rand(dim1, dim2) if rank == 0 else np.empty((dim1, dim2))
-        elif ndim == 3:
-            global_arr = np.random.rand(dim1, dim2, dim3) if rank == 0 else np.empty((dim1, dim2, dim3))
-        else:
-            raise ValueError(f"This function only supports arrays up to rank 3 (received rank {ndim})")
+    if shape == tuple():
+        global_arr = np.empty(0)
+    elif len(shape) <=3:
+        global_arr = np.random.rand(*shape) if rank == 0 else np.empty(shape)
     else:
-        if ndim == 0:
-            global_arr = np.empty(0)
-        elif ndim == 1:
-            global_arr = np.empty(dim1, dtype=float)
-        elif ndim == 2:
-            global_arr = np.empty((dim1, dim2), dtype=float)
-        elif ndim == 3:
-            global_arr = np.empty((dim1, dim2, dim3), dtype=float)
-        else:
-            raise ValueError(f"This function only supports arrays up to rank 3 (received rank {ndim})")
+        raise ValueError(f"This function only supports arrays up to rank 3 (received rank {ndim})")
 
     # Broadcast global_array and create local_array
     comm.Bcast(global_arr, root=0)
-    local_arr = distribute_array(global_arr, comm)
+    local_arr = distribute_array_impl(global_arr, comm)
 
     return local_arr, global_arr
 
-def generate_local_and_global_arrays_from_example(rank, slices, example: int):
+def generate_local_and_global_arrays_from_example_impl(rank, slices, example: int):
     '''Generates both local and global arrays built from the example tensors in the documentation.
        Also returns "slices," which tells how the arrays have been distributed.'''
     # Create arrays

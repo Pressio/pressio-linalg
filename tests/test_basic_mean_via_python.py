@@ -9,7 +9,7 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
-from tests import test_utils
+from pressiolinalg import test_utils
 from pressiolinalg.linalg import _basic_mean_via_python
 
 
@@ -18,7 +18,8 @@ from pressiolinalg.linalg import _basic_mean_via_python
 ########################
 
 def _mean_setup(ndim, dtype=None, axis=None, comm=None):
-    local_arr, global_arr = test_utils.generate_random_local_and_global_arrays(ndim, comm)
+    shape = (7,5,6)
+    local_arr, global_arr = test_utils.generate_random_local_and_global_arrays_impl(shape[:ndim], comm)
     mean_result = _basic_mean_via_python(local_arr, dtype=dtype, axis=axis, comm=comm)
     return mean_result, np.mean(global_arr, dtype=dtype, axis=axis)
 
@@ -34,13 +35,13 @@ def test_python_mean_examples_mpi():
     slices = [(0,2), (2,6), (6,7)]
 
     # Example 1
-    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=1)
+    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=1)
 
     res_ex1 = _basic_mean_via_python(local_arr_1, comm=comm)
     assert res_ex1 == np.mean(global_arr_1)
 
     # Example 2
-    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=2)
+    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=2)
 
     res_ex2_ax0 = _basic_mean_via_python(local_arr_2, axis=0, comm=comm)
     exp_ex2_ax0 = np.mean(global_arr_2, axis=0)
@@ -52,7 +53,7 @@ def test_python_mean_examples_mpi():
     assert np.allclose(res_ex2_ax1, exp_ex2_ax1)
 
     # Example 3
-    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=3)
+    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=3)
 
     res_ex3_ax0 = _basic_mean_via_python(local_arr_3, axis=0, comm=comm)
     exp_ex3_ax0 = np.mean(global_arr_3, axis=0)

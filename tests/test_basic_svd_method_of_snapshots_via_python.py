@@ -7,7 +7,7 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
-from tests import test_utils
+from pressiolinalg import test_utils
 from pressiolinalg.linalg import _thin_svd
 
 
@@ -18,7 +18,7 @@ from pressiolinalg.linalg import _thin_svd
 def create_snapshots(comm):
     num_processes = comm.Get_size()
     global_snapshots = np.array([np.arange(0, num_processes)]).T
-    local_snapshots = test_utils.distribute_array(global_snapshots, comm)
+    local_snapshots = test_utils.distribute_array_impl(global_snapshots, comm)
     return global_snapshots, local_snapshots
 
 def get_serial_solution(snapshots):

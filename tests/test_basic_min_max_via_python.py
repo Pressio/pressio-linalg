@@ -7,7 +7,7 @@ try:
 except ModuleNotFoundError:
     print("module 'mpi4py' is not installed")
 
-from tests import test_utils
+from pressiolinalg import test_utils
 from pressiolinalg.linalg import _basic_max_via_python
 from pressiolinalg.linalg import _basic_min_via_python
 
@@ -18,7 +18,8 @@ from pressiolinalg.linalg import _basic_min_via_python
 
 def _min_max_setup(operation, ndim, axis=None, comm=None):
     num_processors = comm.Get_size()
-    local_arr, global_arr = test_utils.generate_random_local_and_global_arrays(ndim, comm)
+    shape = (7,5,6)
+    local_arr, global_arr = test_utils.generate_random_local_and_global_arrays_impl(shape[:ndim], comm)
 
     if operation == "min":
         min_result = _basic_min_via_python(local_arr, comm=comm)
@@ -42,12 +43,12 @@ def test_python_max_examples_mpi():
     slices = [(0,2), (2,6), (6,7)]
 
     # Example 1
-    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=1)
+    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=1)
     res = _basic_max_via_python(local_arr_1, comm=comm)
     assert res == 51.
 
     # Example 2
-    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=2)
+    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=2)
 
     res_0 = _basic_max_via_python(local_arr_2, axis=0, comm=comm)
     assert np.allclose(res_0, np.array([51., 8., 33.]))
@@ -61,7 +62,7 @@ def test_python_max_examples_mpi():
         assert np.allclose(res_1, np.array([9.]))
 
     # Example 3
-    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=3)
+    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=3)
 
     # Axis 0
     res_ex3_0 = _basic_max_via_python(local_arr_3, axis=0, comm=comm)
@@ -103,12 +104,12 @@ def test_python_min_examples_mpi():
     slices = [(0,2), (2,6), (6,7)]
 
     # Example 1
-    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=1)
+    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=1)
     res = _basic_min_via_python(local_arr_1, comm=comm)
     assert res == -24.
 
     # Example 2
-    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=2)
+    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=2)
 
     # Axis 0
     res_0 = _basic_min_via_python(local_arr_2, axis=0, comm=comm)
@@ -124,7 +125,7 @@ def test_python_min_examples_mpi():
         assert np.allclose(res_1, np.array([-4.]))
 
     # Example 3
-    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example(rank, slices, example=3)
+    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=3)
 
     res_ex3_ax0 = _basic_min_via_python(local_arr_3, axis=0, comm=comm)
     exp_ex3_ax0 = np.min(global_arr_3, axis=0)
