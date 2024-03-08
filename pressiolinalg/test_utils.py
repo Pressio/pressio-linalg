@@ -59,7 +59,7 @@ def generate_random_local_and_global_arrays_impl(shape, comm):
 
     # Broadcast global_array and create local_array
     comm.Bcast(global_arr, root=0)
-    local_arr = distribute_array_impl(global_arr, comm)
+    local_arr = distribute_array_impl(global_arr.copy(), comm)
 
     return local_arr, global_arr
 
