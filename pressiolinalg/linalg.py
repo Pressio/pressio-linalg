@@ -418,9 +418,12 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
         if axis is not None, returns an array of dimension a.dim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is distributed:
+          - 2-D arrays must be distributed along axis=0,
+              and every rank must have the same a.shape[1] and a.shape[2]
+          - 3-D tensors msut be distributed along axis=1,
+              and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -492,44 +495,48 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
     Example 3:
     **********
 
-                / 3.  6. -7.
-       rank 0  /2.  1.  4.
-               --------------
+       / 3.   4.   /  2.   8.   2.   1.   / 2.
+      /  6.  -1.  /  -2.  -1.   0.  -6.  /  0.    -> slice T(:,:,1)
+     /  -7.   5. /    5.   0.   3.   1. /   3.
+    |-----------|----------------------|--------
+    | 2.   3.   |  4.   5.  -2.   4.   | -4.
+    | 1.   5.   | -2.   4.   8.  -3.   |  8.    ->  slice T(:,:,0)
+    | 4.   3.   | -4.   6.   9.  -4.   |  9.
 
-                / 4.  -1.  5.
-               /3.  5.  3.
-      =======================
-
-       rank 1   / 2.  -2.  5.
-               /4.  -2.  -4.
-               --------------
-
-                / 8.  -1.  0.
-               /5.   4.   6.
-               --------------
-
-                / 2.   0.  3.
-               /-2.   8.   9.
-               --------------
-
-                / 1.  -6.  1.
-               /4.  -3.  -4.
-      =======================
-
-       rank 2   / 2.   0.  3.
-               /-4.  8.   9.
-               --------------
+        r0                r1              r2
 
     Suppose that we do:
 
-       res = pla.mean(a, axis=0, comm)
+        res = pla.mean(a, axis=0, comm)
 
-    then this is effectively a reduction over the 0-th axis
+    then res is now a rank-2 array as follows:
+
+        r0      2.33333333  0.66666667
+                3.66666667  2.66666667
+        ======================================
+                -0.66666667 1.66666667
+        r1      5.          2.33333333
+                5.          1.66666667
+                -1.         -1.33333333
+        ======================================
+        r2      4.33333333  1.66666667
+
+
+    because the axis queried for the mean is NOT a distributed axis
+    and this is effectively a reduction over the 0-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+    Suppose that we do:
+
+      res = pla.mean(a, axis=1, comm)
+
+    then this is effectively a reduction over axis=1,
     and every rank will contain the same res which is a rank-2 array as follows
 
-          ([[ 1.71,  3.14],
-            [ 3.  , -0.57],
-            [ 3.29,  1.43]])
+              1.71428571  3.1428571
+              3.         -0.5714285
+              3.28571429  1.4285714
 
     this is because the mean is queried for the 0-th axis which is the
     axis along which the data array is distributed.
@@ -539,43 +546,19 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
 
     Suppose that we do:
 
-      res = pla.mean(a, axis=1, comm)
-
-    then res is now a rank-2 array as follows
-
-       rank 0   2.33,  0.67
-                3.67, -0.57
-      =======================
-       rank 1  -0.67,  1.67
-                5.  ,  2.33
-                5.  ,  1.67
-               -1.  , -1.33
-      =======================
-       rank 2   4.33,  1.67
-
-    because the axis queried for the mean is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
-    so this operation is purely local and the result has the same distribution
-    as the original array
-
-    Suppose that we do:
-
       res = pla.mean(a, axis=2, comm)
 
     then res is now a rank-2 array as follows
 
-      rank 0   2.5,  3.5, -1.5
-               3.5,  2. ,  4.
-      ===========================
-      rank 1   3. , -2. ,  0.5
-               6.5,  1.5,  3.
-               0. ,  4. ,  6.
-               2.5, -4.5, -1.5
-      ===========================
-      rank 2   -1. ,  4. ,  6.
+           r0      ||          r1           ||  r2
+                   ||                       ||
+         2.5  3.5  ||   3.   6.5  0.   2.5  || -1.
+         3.5  2.   ||  -2.   1.5  4.  -4.5  ||  4.
+        -1.5  4.   ||   0.5  3.   6.  -1.5  ||  6.
+                   ||                       ||
 
     because the axis queried for the mean is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
+    and this is effectively a reduction over the 2-th axis
     so this operation is purely local and the result has the same distribution
     as the original array
 
@@ -591,8 +574,10 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
         import mpi4py
         from mpi4py import MPI
 
-        local_size = a.size if axis is None else a.shape[0]
+        local_size = a.size if axis is None else a.shape[axis]
         global_size = comm.allreduce(local_size, op=MPI.SUM)
+
+        distributed_axis = 0 if a.ndim < 3 else 1
 
         if global_size == 0:
             warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
@@ -603,7 +588,7 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
             global_sum = comm.allreduce(local_sum, op=MPI.SUM)
             return global_sum / global_size
 
-        elif axis == 0:
+        elif axis == distributed_axis:
             local_sum = np.sum(a, axis=axis)
             global_sum = np.zeros_like(np.mean(a, axis=axis))
             comm.Allreduce(local_sum, global_sum, op=MPI.SUM)

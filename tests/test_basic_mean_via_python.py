@@ -17,9 +17,9 @@ from pressiolinalg.linalg import _basic_mean_via_python
 ###  Set up problem  ###
 ########################
 
-def _mean_setup(ndim, dtype=None, axis=None, comm=None):
+def _mean_setup(ndim, dtype=None, axis=None, dist_axis=0, comm=None):
     shape = (7,5,6)
-    local_arr, global_arr = test_utils.generate_random_local_and_global_arrays_impl(shape[:ndim], comm)
+    local_arr, global_arr = test_utils.generate_random_local_and_global_arrays_impl(shape[:ndim], comm, dist_axis)
     mean_result = _basic_mean_via_python(local_arr, dtype=dtype, axis=axis, comm=comm)
     return mean_result, np.mean(global_arr, dtype=dtype, axis=axis)
 
@@ -35,13 +35,13 @@ def test_python_mean_examples_mpi():
     slices = [(0,2), (2,6), (6,7)]
 
     # Example 1
-    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=1)
+    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=1)
 
     res_ex1 = _basic_mean_via_python(local_arr_1, comm=comm)
     assert res_ex1 == np.mean(global_arr_1)
 
     # Example 2
-    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=2)
+    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=2)
 
     res_ex2_ax0 = _basic_mean_via_python(local_arr_2, axis=0, comm=comm)
     exp_ex2_ax0 = np.mean(global_arr_2, axis=0)
@@ -53,20 +53,30 @@ def test_python_mean_examples_mpi():
     assert np.allclose(res_ex2_ax1, exp_ex2_ax1)
 
     # Example 3
-    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=3)
+    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=3)
+    # print(f"pla.mean(local_arr_3, comm=comm) = {_basic_mean_via_python(local_arr_3, comm=comm)}")
+    # print(f"np.mean(global_arr_3)            = {np.mean(global_arr_3)}")
+    # print(f"\n\npla.mean(local_arr_3, axis=0, comm=comm):\n{_basic_mean_via_python(local_arr_3, axis=0, comm=comm)}")
+    # print(f"\nnp.mean(global_arr_3, axis=0):\n{np.mean(global_arr_3, axis=0)}")
+    # print(f"\n\npla.mean(local_arr_3, axis=1, comm=comm):\n{_basic_mean_via_python(local_arr_3, axis=1, comm=comm)}")
+    # print(f"\npla.mean(global_arr_3, axis=1):\n{_basic_mean_via_python(global_arr_3, axis=1)}")
+    # print(f"\n\npla.mean(local_arr_3, axis=2, comm=comm):\n{_basic_mean_via_python(local_arr_3, axis=2, comm=comm)}")
+    # print(f"\nnp.mean(global_arr_3, axis=2):\n{np.mean(global_arr_3, axis=2)}")
+
+    assert 2 == 4
 
     res_ex3_ax0 = _basic_mean_via_python(local_arr_3, axis=0, comm=comm)
-    exp_ex3_ax0 = np.mean(global_arr_3, axis=0)
+    full_ex3_ax0_mean = np.mean(global_arr_3, axis=0)
+    exp_ex3_ax0 = full_ex3_ax0_mean[slices[rank][0]:slices[rank][1],:]
     assert np.allclose(res_ex3_ax0, exp_ex3_ax0)
 
     res_ex3_ax1 = _basic_mean_via_python(local_arr_3, axis=1, comm=comm)
-    full_ex3_ax1_mean = np.mean(global_arr_3, axis=1)
-    exp_ex3_ax1 = full_ex3_ax1_mean[slices[rank][0]:slices[rank][1],:]
+    exp_ex3_ax1 = np.mean(global_arr_3, axis=1)
     assert np.allclose(res_ex3_ax1, exp_ex3_ax1)
 
     res_ex3_ax2 = _basic_mean_via_python(local_arr_3, axis=2, comm=comm)
     full_ex3_ax2_mean = np.mean(global_arr_3, axis=2)
-    exp_ex3_ax2 = full_ex3_ax2_mean[slices[rank][0]:slices[rank][1],:]
+    exp_ex3_ax2 = full_ex3_ax2_mean[:,slices[rank][0]:slices[rank][1]]
     assert np.allclose(res_ex3_ax2, exp_ex3_ax2)
 
 @pytest.mark.mpi(min_size=3)
@@ -92,19 +102,19 @@ def test_python_mean_array_mpi():
     result_01, expected_01 = _mean_setup(ndim=2, dtype=np.float32, comm=comm)
     assert np.allclose(result_01, expected_01)
 
-    result_02, expected_02 = _mean_setup(ndim=3, comm=comm)
+    result_02, expected_02 = _mean_setup(ndim=3, comm=comm, dist_axis=1)
     assert np.allclose(result_02, expected_02)
 
 @pytest.mark.mpi(min_size=3)
-def test_python_mean_array_axis_mpi():
+def test_python_mean_tensor_axis_mpi():
     comm = MPI.COMM_WORLD
-    result_01, expected_01 = _mean_setup(ndim=2, axis=0, comm=comm)
-    assert np.allclose(result_01, expected_01)
+    result_01, expected_01 = _mean_setup(ndim=3, axis=0, comm=comm, dist_axis=1)
+    assert len(np.setdiff1d(result_01, expected_01)) == 0
 
-    result_02, expected_02 = _mean_setup(ndim=3, axis=1, comm=comm)
-    assert len(np.setdiff1d(result_02, expected_02)) == 0
+    result_02, expected_02 = _mean_setup(ndim=3, axis=1, comm=comm, dist_axis=1)
+    assert np.allclose(result_02, expected_02)
 
-    result_03, expected_03 = _mean_setup(ndim=3, axis=2, comm=comm)
+    result_03, expected_03 = _mean_setup(ndim=3, axis=2, comm=comm, dist_axis=1)
     assert len(np.setdiff1d(result_03, expected_03)) == 0
 
 def test_python_mean_serial():
@@ -120,5 +130,5 @@ if __name__ == "__main__":
     test_python_mean_null_vector_mpi()
     test_python_mean_vector_mpi()
     test_python_mean_array_mpi()
-    test_python_mean_array_axis_mpi()
+    test_python_mean_tensor_axis_mpi()
     test_python_mean_serial()
