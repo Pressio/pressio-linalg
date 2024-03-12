@@ -63,8 +63,6 @@ def test_python_mean_examples_mpi():
     # print(f"\n\npla.mean(local_arr_3, axis=2, comm=comm):\n{_basic_mean_via_python(local_arr_3, axis=2, comm=comm)}")
     # print(f"\nnp.mean(global_arr_3, axis=2):\n{np.mean(global_arr_3, axis=2)}")
 
-    assert 2 == 4
-
     res_ex3_ax0 = _basic_mean_via_python(local_arr_3, axis=0, comm=comm)
     full_ex3_ax0_mean = np.mean(global_arr_3, axis=0)
     exp_ex3_ax0 = full_ex3_ax0_mean[slices[rank][0]:slices[rank][1],:]

@@ -422,7 +422,7 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
       - if a is distributed:
           - 2-D arrays must be distributed along axis=0,
               and every rank must have the same a.shape[1] and a.shape[2]
-          - 3-D tensors msut be distributed along axis=1,
+          - 3-D tensors must be distributed along axis=1,
               and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
