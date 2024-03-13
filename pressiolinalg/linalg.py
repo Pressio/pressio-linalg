@@ -511,15 +511,8 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
 
     then res is now a rank-2 array as follows:
 
-        r0      2.33333333  0.66666667
-                3.66666667  2.66666667
-        ======================================
-                -0.66666667 1.66666667
-        r1      5.          2.33333333
-                5.          1.66666667
-                -1.         -1.33333333
-        ======================================
-        r2      4.33333333  1.66666667
+       /   0.6667   2.6667  /    1.6667   2.3333   1.6667   -1.3333  /   1.6667
+      / 2.3333  3.6667     / -0.6667.   5.       5.      -1.        /  4.3333
 
 
     because the axis queried for the mean is NOT a distributed axis
