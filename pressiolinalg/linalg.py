@@ -195,9 +195,11 @@ def _basic_max_via_python(a: np.ndarray, axis=None, comm=None):
 
         local_max = np.max(a, axis=axis)
 
+        distributed_axis = 0 if a.ndim < 3 else 1
+
         if axis is None:
             return comm.allreduce(local_max, op=MPI.MAX)
-        elif axis==0:
+        elif axis==distributed_axis:
             if a.ndim == 1:
                 local_max = a
             global_max = np.zeros_like(local_max, dtype=local_max.dtype)
@@ -390,9 +392,11 @@ def _basic_min_via_python(a: np.ndarray, axis=None, comm=None):
 
         local_min = np.min(a, axis=axis)
 
+        distributed_axis = 0 if a.ndim < 3 else 1
+
         if axis is None:
             return comm.allreduce(local_min, op=MPI.MIN)
-        elif axis==0:
+        elif axis==distributed_axis:
             if a.ndim == 1:
                 local_min = a
             global_min = np.zeros_like(local_min, dtype=local_min.dtype)
@@ -591,7 +595,7 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
             return np.mean(a, dtype=dtype, axis=axis)
 
 # ----------------------------------------------------
-def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, comm=None):
+def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, testing=False, comm=None):
     '''
     Return the standard deviation of a possibly distributed array over a given axis.
 
@@ -775,22 +779,40 @@ def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, comm=Non
         import mpi4py
         from mpi4py import MPI
 
-        # Calculate quanities shared among axis=None or axis=0
-        if axis is None or axis == 0:
+        # Determine the axis along which the data is distributed
+        distributed_axis = 0 if a.ndim < 3 else 1
+
+        # Calculate standard deviation
+        if axis is None or axis == distributed_axis:
             global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
-            local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
-            local_size = a.size if axis is None else a.shape[0]
+            if testing:
+                print(f"a: {a}")
+                print(f"global_mean: {global_mean}")
+                reshaped_global_mean = global_mean.reshape(1, global_mean.shape[0], global_mean.shape[1])
+                print(f"a - global_mean: {a - reshaped_global_mean}")
+                local_sq_diff = np.sum(np.square(a - reshaped_global_mean), axis=axis)
+            else:
+                local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
+            if testing:
+                print(f"local sq_diff: {local_sq_diff}")
+                return local_sq_diff
+            local_size = a.size if axis is None else a.shape[axis]
             global_size = comm.allreduce(local_size, op=MPI.SUM)
 
-        if axis is None:
-            global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
-            global_std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
-            return global_std_dev
+            if axis is None:
+                global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
+            else:
+                global_sq_diff = np.zeros_like(local_sq_diff)
+                if testing:
+                    print(f"global_sq_diff initialized with shape {global_sq_diff.shape}")
+                    return np.zeros_like(global_sq_diff)
+                comm.Allreduce(local_sq_diff, global_sq_diff, op=MPI.SUM)
+                if testing:
+                  print(f"global_sq_diff: {global_sq_diff}")
 
-        elif axis == 0:
-            global_sq_diff = np.zeros_like(local_sq_diff)
-            comm.Allreduce(local_sq_diff, global_sq_diff, op=MPI.SUM)
             global_std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
+            if testing:
+                print(f"global_std_dev: {global_std_dev}")
             return global_std_dev
 
         else:

@@ -10,14 +10,14 @@ except ModuleNotFoundError:
 ########             MPI Helpers             ########
 #####################################################
 
-def distribute_array_impl(global_array, comm, axis=0):
+def distribute_array_impl(global_array, comm, dist_axis=0):
     '''
     Splts an np.array and distributes to all available MPI processes as evenly as possible
 
     Inputs:
         global_array: The global np.array to be distributed.
         comm: The MPI communicator
-        axis: The axis along which to split the input array. By default, splits along the first axis (rows).
+        dist_axis: The axis along which to split the input array. By default, splits along the first axis (rows).
 
     Returns:
         local_array: The subset of global_array sent to the current MPI process.
@@ -33,7 +33,7 @@ def distribute_array_impl(global_array, comm, axis=0):
 
     # Split the global_array and send to corresponding MPI rank
     if rank == 0:
-        splits = np.array_split(global_array, n_procs, axis=axis)
+        splits = np.array_split(global_array, n_procs, axis=dist_axis)
         for proc in range(n_procs):
             if proc == 0:
                 local_array = splits[proc]
@@ -44,7 +44,7 @@ def distribute_array_impl(global_array, comm, axis=0):
 
     return local_array
 
-def generate_random_local_and_global_arrays_impl(shape, comm, axis=0):
+def generate_random_local_and_global_arrays_impl(shape, comm):
     '''Randomly generates both local and global arrays using optional dim<x> arguments to specify the shape'''
     # Get comm info
     rank = comm.Get_rank()
@@ -59,7 +59,8 @@ def generate_random_local_and_global_arrays_impl(shape, comm, axis=0):
 
     # Broadcast global_array and create local_array
     comm.Bcast(global_arr, root=0)
-    local_arr = distribute_array_impl(global_arr.copy(), comm, axis)
+    dist_axis = 0 if len(shape) < 3 else 1
+    local_arr = distribute_array_impl(global_arr.copy(), comm, dist_axis)
 
     return local_arr, global_arr
 
