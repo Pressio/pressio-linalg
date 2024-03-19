@@ -65,39 +65,6 @@ def generate_random_local_and_global_arrays_impl(shape, comm):
     return local_arr, global_arr
 
 def generate_local_and_global_arrays_from_example_impl(rank, slices, example: int):
-    '''Generates both local and global arrays built from the example tensors in the documentation.
-       Also returns "slices," which tells how the arrays have been distributed.'''
-    # Create arrays
-    if example == 1:
-        global_arr = np.array([2.2, 3.3, 40., 51., -24., 45., -4.])
-        local_arr = global_arr[slices[rank][0]:slices[rank][1]]
-
-    elif example == 2:
-        global_arr = np.array([[2.2, 1.3, 4.],
-                               [3.3, 5.0, 33.],
-                               [40., -2., -4.],
-                               [51., 4., 6.],
-                               [-24., 8., 9.],
-                               [45., -3., -4.],
-                               [-4., 8., 9.]])
-        local_arr = global_arr[slices[rank][0]:slices[rank][1],:]
-
-    elif example == 3:
-        global_arr = np.array([[[2.,3.],[1.,6.],[4.,-7]],
-                               [[3.,4.],[5.,-1.],[3.,5.]],
-                               [[4.,2],[-2.,-2.],[-4.,5]],
-                               [[5.,8.],[4.,-1.],[6.,0]],
-                               [[-2.,2,],[8.,0.],[9.,3]],
-                               [[4.,1],[-3.,-6.],[-4.,1]],
-                               [[-4.,2.],[8.,0.],[9.,3.]]])
-        local_arr = global_arr[slices[rank][0]:slices[rank][1],:,:]
-
-    else:
-        return None, None
-
-    return local_arr, global_arr
-
-def generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example: int):
     '''Generates both local and global arrays built from the example tensors in the documentation.'''    # Create arrays
     if example == 1:
         global_arr = np.array([2.2, 3.3, 40., 51., -24., 45., -4.])

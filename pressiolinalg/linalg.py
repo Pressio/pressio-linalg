@@ -20,13 +20,15 @@ def _basic_max_via_python(a: np.ndarray, axis=None, comm=None):
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -156,29 +158,38 @@ def _basic_max_via_python(a: np.ndarray, axis=None, comm=None):
     as the original array.
 
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.max if running serial
     if comm is None or comm.Get_size() == 1:
         return np.max(a, axis=axis)
 
+    # Otherwise, calculate distributed max
     else:
-
         import mpi4py
         from mpi4py import MPI
 
+        # Get the max on the current process
         local_max = np.max(a, axis=axis)
 
+        # Identify the axis along which the data is the distributed
         distributed_axis = 0 if a.ndim < 3 else 1
 
+        # Return the max of the flattened array if no axis is given
         if axis is None:
             return comm.allreduce(local_max, op=MPI.MAX)
+
+        # If queried axis is the same as distributed axis, perform collective operation
         elif axis==distributed_axis:
             if a.ndim == 1:
                 local_max = a
             global_max = np.zeros_like(local_max, dtype=local_max.dtype)
             comm.Allreduce(local_max, global_max, op=MPI.MAX)
             return global_max
+
+        # Otherwise, return the local_max on the current process
         else:
             return local_max
 
@@ -194,13 +205,15 @@ def _basic_min_via_python(a: np.ndarray, axis=None, comm=None):
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -330,27 +343,38 @@ def _basic_min_via_python(a: np.ndarray, axis=None, comm=None):
     as the original array.
 
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.min if running serial
     if comm is None or comm.Get_size() == 1:
         return np.min(a, axis=axis)
+
+    # Otherwise, calculate distributed min
     else:
         import mpi4py
         from mpi4py import MPI
 
+        # Get the min on the current process
         local_min = np.min(a, axis=axis)
 
+        # Identify the axis along which the data is the distributed
         distributed_axis = 0 if a.ndim < 3 else 1
 
+        # Return the min of the flattened array if no axis is given
         if axis is None:
             return comm.allreduce(local_min, op=MPI.MIN)
+
+        # If queried axis is the same as distributed axis, perform collective operation
         elif axis==distributed_axis:
             if a.ndim == 1:
                 local_min = a
             global_min = np.zeros_like(local_min, dtype=local_min.dtype)
             comm.Allreduce(local_min, global_min, op=MPI.MIN)
             return global_min
+
+        # Otherwise, return the local_min on the current process
         else:
             return local_min
 
@@ -367,16 +391,15 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
       - a is at most a rank-3 tensor
-      - if a is distributed:
-          - 2-D arrays must be distributed along axis=0,
-              and every rank must have the same a.shape[1] and a.shape[2]
-          - 3-D tensors must be distributed along axis=1,
-              and every rank must have the same a.shape[0] and a.shape[2]
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -510,37 +533,45 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
     as the original array.
 
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.mean if running serial
     if comm is None or comm.Get_size() == 1:
         return np.mean(a, dtype=dtype, axis=axis)
 
+    # Otherwise calculate distributed mean
     else:
-
         import mpi4py
         from mpi4py import MPI
 
+        # Get the size (mean = sum/size) -- num elements if axis is None, or num rows along given axis
         local_size = a.size if axis is None else a.shape[axis]
         global_size = comm.allreduce(local_size, op=MPI.SUM)
 
-        distributed_axis = 0 if a.ndim < 3 else 1
-
+        # Warn if dividing by 0
         if global_size == 0:
             warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
             return np.nan
 
+        # Identify the axis along which the input array is distributed
+        distributed_axis = 0 if a.ndim < 3 else 1
+
+        # Calculate mean of flattened array if no axis is given
         if axis is None:
             local_sum = np.sum(a)
             global_sum = comm.allreduce(local_sum, op=MPI.SUM)
             return global_sum / global_size
 
+        # Get mean along distributed axis and perform collective operation
         elif axis == distributed_axis:
             local_sum = np.sum(a, axis=axis)
             global_sum = np.zeros_like(np.mean(a, axis=axis))
             comm.Allreduce(local_sum, global_sum, op=MPI.SUM)
             return global_sum / global_size
 
+        # Return the local mean if queried axis is not the distributed axis
         else:
             return np.mean(a, dtype=dtype, axis=axis)
 
@@ -553,17 +584,18 @@ def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, testing=False, c
         a (np.ndarray): input data
         dtype (data-type): Type to use in computing the mean (default: float64 for int arrays, same type as input for float arrays)
         axis (None or int): the axis along which to compute the mean. If None, computes the mean of the flattened array. (default: None)
-        ddof (int): Delta degrees of freedom used in divisor N - ddof (default: 0)
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -694,11 +726,15 @@ def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, testing=False, c
     so this operation is purely local and the result has the same distribution
     as the original array.
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.std if running serial
     if comm is None or comm.Get_size() == 1:
         return np.std(a, dtype=dtype, axis=axis)
+
+    # Otherwis, calculate distributed standard deviation
     else:
         import mpi4py
         from mpi4py import MPI
@@ -709,27 +745,39 @@ def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, testing=False, c
         # Calculate standard deviation of flattened array
         if axis is None:
             global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
+
+            # Compute the sum of the squared differences from the mean
             local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
             local_size = a.size
             global_size = comm.allreduce(local_size, op=MPI.SUM)
             global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
+
+            # Return the standard deviation
             global_std_dev = np.sqrt(global_sq_diff / (global_size))
             return global_std_dev
 
         # Calculate standard deviation along specified axis
         elif axis == distributed_axis:
             global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
+
+            # Compute the sum of the squared differences from the mean
             if distributed_axis == 0:
                 local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
             else:
+                # Must specify how to broadcast the global_mean to match dimensions of a
                 local_sq_diff = np.sum(np.square(a - global_mean[:,np.newaxis,:]), axis=axis)
+
+            # Get global squared differences
             local_size = a.shape[axis]
             global_size = comm.allreduce(local_size, op=MPI.SUM)
             global_sq_diff = np.zeros_like(local_sq_diff)
             comm.Allreduce(local_sq_diff, global_sq_diff, op=MPI.SUM)
+
+            # Return the standard deviation
             global_std_dev = np.sqrt(global_sq_diff / (global_size))
             return global_std_dev
 
+        # Return the local standard deviation if queried axis is not the distributed axis
         else:
             return np.std(a, dtype=dtype, axis=axis)
 

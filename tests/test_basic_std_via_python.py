@@ -35,12 +35,12 @@ def test_python_std_examples_mpi():
     slices = [(0,2), (2,6), (6,7)]
 
     # Example 1
-    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=1)
+    local_arr_1, global_arr_1 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=1)
     res_ex1 = _basic_std_via_python(local_arr_1, comm=comm)
     np.testing.assert_almost_equal(res_ex1, np.std(global_arr_1), decimal=10)
 
     # Example 2
-    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=2)
+    local_arr_2, global_arr_2 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=2)
 
     res_ex2_ax0 = _basic_std_via_python(local_arr_2, axis=0, comm=comm)
     exp_ex2_ax0 = np.std(global_arr_2, axis=0)
@@ -52,7 +52,7 @@ def test_python_std_examples_mpi():
     assert np.allclose(res_ex2_ax1, exp_ex2_ax1)
 
     # Example 3
-    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=3)
+    local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=3)
     res_ex3_ax0 = _basic_std_via_python(local_arr_3, axis=0, comm=comm)
     full_ex3_ax0_std = np.std(global_arr_3, axis=0)
     exp_ex3_ax0 = full_ex3_ax0_std[slices[rank][0]:slices[rank][1],:]
