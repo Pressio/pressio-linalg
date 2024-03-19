@@ -15,13 +15,13 @@ from pressiolinalg.linalg import _basic_std_via_python
 ###  Set up problem  ###
 ########################
 
-def _std_setup(ndim, dtype=None, axis=None, ddof=0, comm=None):
+def _std_setup(ndim, dtype=None, axis=None, comm=None):
     n_procs = comm.Get_size()
     shape = (7,5,6)
     local_arr, global_arr = test_utils.generate_random_local_and_global_arrays_impl(shape[:ndim], comm)
 
-    std_result = _basic_std_via_python(local_arr, dtype=dtype, axis=axis, ddof=ddof, comm=comm)
-    return std_result, np.std(global_arr, dtype=dtype, axis=axis, ddof=ddof)
+    std_result = _basic_std_via_python(local_arr, dtype=dtype, axis=axis, comm=comm)
+    return std_result, np.std(global_arr, dtype=dtype, axis=axis)
 
 
 ########################
@@ -79,7 +79,7 @@ def test_python_std_array_mpi():
     result_01, expected_01 = _std_setup(ndim=2, dtype=np.float32, comm=comm)
     assert np.allclose(result_01, expected_01)
 
-    result_02, expected_02 = _std_setup(ndim=3, ddof=1, comm=comm)
+    result_02, expected_02 = _std_setup(ndim=3, comm=comm)
     assert np.allclose(result_02, expected_02)
 
 @pytest.mark.mpi(min_size=3)
@@ -91,7 +91,7 @@ def test_python_std_array_axis_mpi():
     result_02, expected_02 = _std_setup(ndim=2, dtype=np.float32, axis=1, comm=comm)
     assert len(np.setdiff1d(result_02, expected_02)) == 0
 
-    result_03, expected_03 = _std_setup(ndim=3, ddof=1, axis=2, comm=comm)
+    result_03, expected_03 = _std_setup(ndim=3, axis=2, comm=comm)
     assert len(np.setdiff1d(result_03, expected_03)) == 0
 
 def test_python_std_serial():

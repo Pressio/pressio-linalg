@@ -61,15 +61,6 @@ def test_python_max_examples_mpi():
 
     # Example 3
     local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=3)
-    # print(f"pla.max(local_arr_3, comm=comm) = {_basic_max_via_python(local_arr_3, comm=comm)}")
-    # print(f"np.max(global_arr_3)            = {np.max(global_arr_3)}")
-    # print(f"\n\npla.max(local_arr_3, axis=0, comm=comm):\n{_basic_max_via_python(local_arr_3, axis=0, comm=comm)}")
-    # print(f"\nnp.max(global_arr_3, axis=0):\n{np.max(global_arr_3, axis=0)}")
-    # print(f"\n\npla.max(local_arr_3, axis=1, comm=comm):\n{_basic_max_via_python(local_arr_3, axis=1, comm=comm)}")
-    # print(f"\npla.max(global_arr_3, axis=1):\n{_basic_max_via_python(global_arr_3, axis=1)}")
-    # print(f"\n\npla.max(local_arr_3, axis=2, comm=comm):\n{_basic_max_via_python(local_arr_3, axis=2, comm=comm)}")
-    # print(f"\nnp.max(global_arr_3, axis=2):\n{np.max(global_arr_3, axis=2)}")
-
     res_ex3_ax0 = _basic_max_via_python(local_arr_3, axis=0, comm=comm)
     full_ex3_ax0_max = np.max(global_arr_3, axis=0)
     exp_ex3_ax0 = full_ex3_ax0_max[slices[rank][0]:slices[rank][1],:]
@@ -111,15 +102,6 @@ def test_python_min_examples_mpi():
 
     # Example 3
     local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=3)
-    # print(f"pla.min(local_arr_3, comm=comm) = {_basic_min_via_python(local_arr_3, comm=comm)}")
-    # print(f"np.min(global_arr_3)            = {np.min(global_arr_3)}")
-    # print(f"\n\npla.min(local_arr_3, axis=0, comm=comm):\n{_basic_min_via_python(local_arr_3, axis=0, comm=comm)}")
-    # print(f"\nnp.min(global_arr_3, axis=0):\n{np.min(global_arr_3, axis=0)}")
-    # print(f"\n\npla.min(local_arr_3, axis=1, comm=comm):\n{_basic_min_via_python(local_arr_3, axis=1, comm=comm)}")
-    # print(f"\npla.min(global_arr_3, axis=1):\n{_basic_min_via_python(global_arr_3, axis=1)}")
-    # print(f"\n\npla.min(local_arr_3, axis=2, comm=comm):\n{_basic_min_via_python(local_arr_3, axis=2, comm=comm)}")
-    # print(f"\nnp.min(global_arr_3, axis=2):\n{np.min(global_arr_3, axis=2)}")
-
     res_ex3_ax0 = _basic_min_via_python(local_arr_3, axis=0, comm=comm)
     full_ex3_ax0_min = np.min(global_arr_3, axis=0)
     exp_ex3_ax0 = full_ex3_ax0_min[slices[rank][0]:slices[rank][1],:]

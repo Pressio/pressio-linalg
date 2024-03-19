@@ -54,15 +54,6 @@ def test_python_mean_examples_mpi():
 
     # Example 3
     local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_updated_example_impl(rank, slices, example=3)
-    # print(f"pla.mean(local_arr_3, comm=comm) = {_basic_mean_via_python(local_arr_3, comm=comm)}")
-    # print(f"np.mean(global_arr_3)            = {np.mean(global_arr_3)}")
-    # print(f"\n\npla.mean(local_arr_3, axis=0, comm=comm):\n{_basic_mean_via_python(local_arr_3, axis=0, comm=comm)}")
-    # print(f"\nnp.mean(global_arr_3, axis=0):\n{np.mean(global_arr_3, axis=0)}")
-    # print(f"\n\npla.mean(local_arr_3, axis=1, comm=comm):\n{_basic_mean_via_python(local_arr_3, axis=1, comm=comm)}")
-    # print(f"\npla.mean(global_arr_3, axis=1):\n{_basic_mean_via_python(global_arr_3, axis=1)}")
-    # print(f"\n\npla.mean(local_arr_3, axis=2, comm=comm):\n{_basic_mean_via_python(local_arr_3, axis=2, comm=comm)}")
-    # print(f"\nnp.mean(global_arr_3, axis=2):\n{np.mean(global_arr_3, axis=2)}")
-
     res_ex3_ax0 = _basic_mean_via_python(local_arr_3, axis=0, comm=comm)
     full_ex3_ax0_mean = np.mean(global_arr_3, axis=0)
     exp_ex3_ax0 = full_ex3_ax0_mean[slices[rank][0]:slices[rank][1],:]
@@ -70,6 +61,9 @@ def test_python_mean_examples_mpi():
 
     res_ex3_ax1 = _basic_mean_via_python(local_arr_3, axis=1, comm=comm)
     exp_ex3_ax1 = np.mean(global_arr_3, axis=1)
+    # print(f"res: {res_ex3_ax1}")
+    # print(f"exp: {exp_ex3_ax1}")
+    # assert 2 == 4
     assert np.allclose(res_ex3_ax1, exp_ex3_ax1)
 
     res_ex3_ax2 = _basic_mean_via_python(local_arr_3, axis=2, comm=comm)
