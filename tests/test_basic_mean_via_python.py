@@ -61,9 +61,6 @@ def test_python_mean_examples_mpi():
 
     res_ex3_ax1 = _basic_mean_via_python(local_arr_3, axis=1, comm=comm)
     exp_ex3_ax1 = np.mean(global_arr_3, axis=1)
-    # print(f"res: {res_ex3_ax1}")
-    # print(f"exp: {exp_ex3_ax1}")
-    # assert 2 == 4
     assert np.allclose(res_ex3_ax1, exp_ex3_ax1)
 
     res_ex3_ax2 = _basic_mean_via_python(local_arr_3, axis=2, comm=comm)
@@ -98,6 +95,15 @@ def test_python_mean_array_mpi():
     assert np.allclose(result_02, expected_02)
 
 @pytest.mark.mpi(min_size=3)
+def test_python_mean_array_axis_mpi():
+    comm = MPI.COMM_WORLD
+    result_01, expected_01 = _mean_setup(ndim=2, axis=0, comm=comm)
+    assert np.allclose(result_01, expected_01)
+
+    result_02, expected_02 = _mean_setup(ndim=2, axis=1, comm=comm)
+    assert len(np.setdiff1d(result_02, expected_02)) == 0
+
+@pytest.mark.mpi(min_size=3)
 def test_python_mean_tensor_axis_mpi():
     comm = MPI.COMM_WORLD
     result_01, expected_01 = _mean_setup(ndim=3, axis=0, comm=comm)
@@ -122,5 +128,6 @@ if __name__ == "__main__":
     test_python_mean_null_vector_mpi()
     test_python_mean_vector_mpi()
     test_python_mean_array_mpi()
+    test_python_mean_array_axis_mpi()
     test_python_mean_tensor_axis_mpi()
     test_python_mean_serial()

@@ -12,7 +12,11 @@ except ModuleNotFoundError:
 
 def distribute_array_impl(global_array, comm, dist_axis=0):
     '''
-    Splts an np.array and distributes to all available MPI processes as evenly as possible
+    Splts an np.array and distributes to all available MPI processes as evenly as possible.
+
+    For example, distributing an array with 6 rows over 3 processes will result in 2 rows
+    per process.
+    If the array has 7 rows, 2 processors will hold 2 rows, and the third will hold 3 rows.
 
     Inputs:
         global_array: The global np.array to be distributed.
@@ -45,7 +49,12 @@ def distribute_array_impl(global_array, comm, dist_axis=0):
     return local_array
 
 def generate_random_local_and_global_arrays_impl(shape, comm):
-    '''Randomly generates both local and global arrays using optional dim<x> arguments to specify the shape'''
+    '''
+    Randomly generates a global array of the specified shape and distributes to all available
+    MPI processes.
+
+    Returns both the local and global arrays.
+    '''
     # Get comm info
     rank = comm.Get_rank()
 
@@ -65,7 +74,10 @@ def generate_random_local_and_global_arrays_impl(shape, comm):
     return local_arr, global_arr
 
 def generate_local_and_global_arrays_from_example_impl(rank, slices, example: int):
-    '''Generates both local and global arrays built from the example tensors in the documentation.'''    # Create arrays
+    '''
+    Generates and returns the local and global arrays built from the example tensors in the documentation.
+    '''
+    # Create arrays
     if example == 1:
         global_arr = np.array([2.2, 3.3, 40., 51., -24., 45., -4.])
         local_arr = global_arr[slices[rank][0]:slices[rank][1]]
