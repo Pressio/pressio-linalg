@@ -20,13 +20,15 @@ def _basic_max_via_python(a: np.ndarray, axis=None, comm=None):
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -94,44 +96,42 @@ def _basic_max_via_python(a: np.ndarray, axis=None, comm=None):
     Example 3:
     **********
 
-                / 3.  6. -7.
-       rank 0  /2.  1.  4.
-               --------------
+       / 3.   4.   /  2.   8.   2.   1.   / 2.
+      /  6.  -1.  /  -2.  -1.   0.  -6.  /  0.    -> slice T(:,:,1)
+     /  -7.   5. /    5.   0.   3.   1. /   3.
+    |-----------|----------------------|--------
+    | 2.   3.   |  4.   5.  -2.   4.   | -4.
+    | 1.   5.   | -2.   4.   8.  -3.   |  8.    ->  slice T(:,:,0)
+    | 4.   3.   | -4.   6.   9.  -4.   |  9.
 
-                / 4.  -1.  5.
-               /3.  5.  3.
-      =======================
-
-       rank 1   / 2.  -2.  5.
-               /4.  -2.  -4.
-               --------------
-
-                / 8.  -1.  0.
-               /5.   4.   6.
-               --------------
-
-                / 2.   0.   3.
-               /-2.   8.   9.
-               --------------
-
-                / 1.  -6.  1.
-               /4.  -3.  -4.
-      =======================
-
-       rank 2   / 2.   0.  3.
-               /-4.  8.   9.
-               --------------
+        r0                r1              r2
 
     Suppose that we do:
 
-       res = pla.max(a, axis=0, comm)
+        res = pla.max(a, axis=0, comm)
 
-    then this is effectively a reduction over the 0-th axis
+    then res is now a rank-2 array as follows:
+
+       /  6.  5.   /  5.   8.   3.   1.  /  3.
+      / 4.   5.   / 4.   6.   9.   4.   /  9.
+     /           /                     /
+    /    r1     /         r2          /  r3
+
+    because the axis queried for the max is NOT a distributed axis
+    and this is effectively a reduction over the 0-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+    Suppose that we do:
+
+      res = pla.max(a, axis=1, comm)
+
+    then this is effectively a reduction over axis=1,
     and every rank will contain the same res which is a rank-2 array as follows
 
-          ([[5. 8.]
-            [8. 6.]
-            [9. 5.]])
+                  5.  8.
+                  8.  6.
+                  9.  5.
 
     this is because the max is queried for the 0-th axis which is the
     axis along which the data array is distributed.
@@ -141,68 +141,55 @@ def _basic_max_via_python(a: np.ndarray, axis=None, comm=None):
 
     Suppose that we do:
 
-      res = pla.max(a, axis=1, comm)
-
-    then res is now a rank-2 array as follows
-
-       rank 0  4, 6
-               5, 5
-      =======================
-       rank 1  4, 5
-               6, 8
-               9, 3
-               4, 1
-      =======================
-       rank 2  9, 3
-
-    because the axis queried for the max is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
-    so this operation is purely local and the result has the same distribution
-    as the original array.
-
-    Suppose that we do:
-
       res = pla.max(a, axis=2, comm)
 
     then res is now a rank-2 array as follows
 
-       rank 0  3, 6, 4
-               4, 5, 5
-      =======================
-       rank 1  4, -2, 5
-               8, 4, 6
-               2, 8, 9
-               4, -3, 1
-      =======================
-       rank 2  2, 8, 9
+            r0     ||          r1           ||  r2
+                   ||                       ||
+          3.   4.  ||   4.   8.   2.   4.   ||   2.
+          6.   5.  ||  -2.   4.   8.  -3.   ||   8.
+          4.   5.  ||   5.   6.   9.   1.   ||   9.
+                   ||                       ||
 
     because the axis queried for the max is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
+    and this is effectively a reduction over the 2-th axis
     so this operation is purely local and the result has the same distribution
     as the original array.
 
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.max if running serial
     if comm is None or comm.Get_size() == 1:
         return np.max(a, axis=axis)
 
+    # Otherwise, calculate distributed max
     else:
-
         import mpi4py
         from mpi4py import MPI
 
+        # Get the max on the current process
         local_max = np.max(a, axis=axis)
 
+        # Identify the axis along which the data is the distributed
+        distributed_axis = 0 if a.ndim < 3 else 1
+
+        # Return the max of the flattened array if no axis is given
         if axis is None:
             return comm.allreduce(local_max, op=MPI.MAX)
-        elif axis==0:
+
+        # If queried axis is the same as distributed axis, perform collective operation
+        elif axis==distributed_axis:
             if a.ndim == 1:
                 local_max = a
             global_max = np.zeros_like(local_max, dtype=local_max.dtype)
             comm.Allreduce(local_max, global_max, op=MPI.MAX)
             return global_max
+
+        # Otherwise, return the local_max on the current process
         else:
             return local_max
 
@@ -218,13 +205,15 @@ def _basic_min_via_python(a: np.ndarray, axis=None, comm=None):
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -292,45 +281,44 @@ def _basic_min_via_python(a: np.ndarray, axis=None, comm=None):
     Example 3:
     **********
 
-                / 3.  6. -7.
-       rank 0  /2.  1.  4.
-               --------------
+       / 3.   4.   /  2.   8.   2.   1.   / 2.
+      /  6.  -1.  /  -2.  -1.   0.  -6.  /  0.    -> slice T(:,:,1)
+     /  -7.   5. /    5.   0.   3.   1. /   3.
+    |-----------|----------------------|--------
+    | 2.   3.   |  4.   5.  -2.   4.   | -4.
+    | 1.   5.   | -2.   4.   8.  -3.   |  8.    ->  slice T(:,:,0)
+    | 4.   3.   | -4.   6.   9.  -4.   |  9.
 
-                / 4.  -1.  5.
-               /3.  5.  3.
-      =======================
-
-       rank 1   / 2.  -2.  5.
-               /4.  -2.  -4.
-               --------------
-
-                / 8.  -1.  0.
-               /5.   4.   6.
-               --------------
-
-                / 2.   0.  3.
-               /-2.   8.   9.
-               --------------
-
-                / 1.  -6.  1.
-               /4.  -3.  -4.
-      =======================
-
-       rank 2   / 2.   0.  3.
-               /-4.  8.   9.
-               --------------
+        r0                r1              r2
 
     Suppose that we do:
 
-       res = pla.min(a, axis=0, comm)
+        res = pla.max(a, axis=0, comm)
 
-    then this is effectively a reduction over the 0-th axis
+    then res is now a rank-2 array as follows:
+
+       /  -7.  -1.  /  -2.   -1.   0.   -6.  /  0.
+      / 1.    3.   / -4.    4.   -2.   -4.  /  -4.
+     /            /                        /
+    /     r1     /           r2           /   r3
+
+    because the axis queried for the max is NOT a distributed axis
+    and this is effectively a reduction over the 0-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+    Suppose that we do:
+
+      res = pla.max(a, axis=1, comm)
+
+    then this is effectively a reduction over axis=1,
     and every rank will contain the same res which is a rank-2 array as follows
 
-          ([[8., 6., 5.],
-            [5, 8., 9.]])
+                    -4.   1.
+                    -3.  -6.
+                    -4.  -7.
 
-    this is because the min is queried for the 0-th axis which is the
+    this is because the max is queried for the 0-th axis which is the
     axis along which the data array is distributed.
     So this operation must be a collective operation and we know that
     memory-wise it is feasible to hold because this is no larger than the
@@ -338,66 +326,55 @@ def _basic_min_via_python(a: np.ndarray, axis=None, comm=None):
 
     Suppose that we do:
 
-      res = pla.min(a, axis=1, comm)
+      res = pla.max(a, axis=2, comm)
 
     then res is now a rank-2 array as follows
 
-       rank 0  4, 6
-               5, 5
-      =======================
-       rank 1  4, 5
-               6, 8
-               9, 3
-               4, 1
-      =======================
-       rank 2  9, 3
+             r0    ||          r1           ||  r2
+                   ||                       ||
+           2.  3.  ||   2.   5.  -2.   1.   ||  -4.
+           1. -1.  ||  -2.  -1.   0.  -6.   ||   0.
+          -7.  3.  ||  -4.   0.   3.  -4.   ||   3.
+                   ||                       ||
 
-    because the axis queried for the min is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
-    so this operation is purely local and the result has the same distribution
-    as the original array.
-
-    Suppose that we do:
-
-      res = pla.min(a, axis=2, comm)
-
-    then res is now a rank-2 array as follows
-
-       rank 0  3, 6, 4
-               4, 5, 5
-      =======================
-       rank 1  4, -2, 5
-               8, 4, 6
-               2, 8, 9
-               4, -3, -4
-      =======================
-       rank 2  2, 8, 9
-
-    because the axis queried for the min is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
+    because the axis queried for the max is NOT a distributed axis
+    and this is effectively a reduction over the 2-th axis
     so this operation is purely local and the result has the same distribution
     as the original array.
 
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.min if running serial
     if comm is None or comm.Get_size() == 1:
         return np.min(a, axis=axis)
+
+    # Otherwise, calculate distributed min
     else:
         import mpi4py
         from mpi4py import MPI
 
+        # Get the min on the current process
         local_min = np.min(a, axis=axis)
 
+        # Identify the axis along which the data is the distributed
+        distributed_axis = 0 if a.ndim < 3 else 1
+
+        # Return the min of the flattened array if no axis is given
         if axis is None:
             return comm.allreduce(local_min, op=MPI.MIN)
-        elif axis==0:
+
+        # If queried axis is the same as distributed axis, perform collective operation
+        elif axis==distributed_axis:
             if a.ndim == 1:
                 local_min = a
             global_min = np.zeros_like(local_min, dtype=local_min.dtype)
             comm.Allreduce(local_min, global_min, op=MPI.MIN)
             return global_min
+
+        # Otherwise, return the local_min on the current process
         else:
             return local_min
 
@@ -414,13 +391,15 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -492,44 +471,42 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
     Example 3:
     **********
 
-                / 3.  6. -7.
-       rank 0  /2.  1.  4.
-               --------------
+       / 3.   4.   /  2.   8.   2.   1.   / 2.
+      /  6.  -1.  /  -2.  -1.   0.  -6.  /  0.    -> slice T(:,:,1)
+     /  -7.   5. /    5.   0.   3.   1. /   3.
+    |-----------|----------------------|--------
+    | 2.   3.   |  4.   5.  -2.   4.   | -4.
+    | 1.   5.   | -2.   4.   8.  -3.   |  8.    ->  slice T(:,:,0)
+    | 4.   3.   | -4.   6.   9.  -4.   |  9.
 
-                / 4.  -1.  5.
-               /3.  5.  3.
-      =======================
-
-       rank 1   / 2.  -2.  5.
-               /4.  -2.  -4.
-               --------------
-
-                / 8.  -1.  0.
-               /5.   4.   6.
-               --------------
-
-                / 2.   0.  3.
-               /-2.   8.   9.
-               --------------
-
-                / 1.  -6.  1.
-               /4.  -3.  -4.
-      =======================
-
-       rank 2   / 2.   0.  3.
-               /-4.  8.   9.
-               --------------
+        r0                r1              r2
 
     Suppose that we do:
 
-       res = pla.mean(a, axis=0, comm)
+        res = pla.mean(a, axis=0, comm)
 
-    then this is effectively a reduction over the 0-th axis
+    then res is now a rank-2 array as follows:
+
+       /   0.6667   2.6667  /    1.6667   2.3333   1.6667   -1.3333  /   1.6667
+      / 2.3333  3.6667     / -0.6667.   5.       5.      -1.        /  4.3333
+     /                    /                                        /
+    /         r1         /                  r2                    /    r3
+
+    because the axis queried for the mean is NOT a distributed axis
+    and this is effectively a reduction over the 0-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+    Suppose that we do:
+
+      res = pla.mean(a, axis=1, comm)
+
+    then this is effectively a reduction over axis=1,
     and every rank will contain the same res which is a rank-2 array as follows
 
-          ([[ 1.71,  3.14],
-            [ 3.  , -0.57],
-            [ 3.29,  1.43]])
+              1.71428571  3.1428571
+              3.         -0.5714285
+              3.28571429  1.4285714
 
     this is because the mean is queried for the 0-th axis which is the
     axis along which the data array is distributed.
@@ -539,81 +516,67 @@ def _basic_mean_via_python(a: np.ndarray, dtype=None, axis=None, comm=None):
 
     Suppose that we do:
 
-      res = pla.mean(a, axis=1, comm)
-
-    then res is now a rank-2 array as follows
-
-       rank 0   2.33,  0.67
-                3.67, -0.57
-      =======================
-       rank 1  -0.67,  1.67
-                5.  ,  2.33
-                5.  ,  1.67
-               -1.  , -1.33
-      =======================
-       rank 2   4.33,  1.67
-
-    because the axis queried for the mean is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
-    so this operation is purely local and the result has the same distribution
-    as the original array
-
-    Suppose that we do:
-
       res = pla.mean(a, axis=2, comm)
 
     then res is now a rank-2 array as follows
 
-      rank 0   2.5,  3.5, -1.5
-               3.5,  2. ,  4.
-      ===========================
-      rank 1   3. , -2. ,  0.5
-               6.5,  1.5,  3.
-               0. ,  4. ,  6.
-               2.5, -4.5, -1.5
-      ===========================
-      rank 2   -1. ,  4. ,  6.
+           r0      ||          r1           ||  r2
+                   ||                       ||
+         2.5  3.5  ||   3.   6.5  0.   2.5  || -1.
+         3.5  2.   ||  -2.   1.5  4.  -4.5  ||  4.
+        -1.5  4.   ||   0.5  3.   6.  -1.5  ||  6.
+                   ||                       ||
 
     because the axis queried for the mean is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
+    and this is effectively a reduction over the 2-th axis
     so this operation is purely local and the result has the same distribution
-    as the original array
+    as the original array.
 
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.mean if running serial
     if comm is None or comm.Get_size() == 1:
         return np.mean(a, dtype=dtype, axis=axis)
 
+    # Otherwise calculate distributed mean
     else:
-
         import mpi4py
         from mpi4py import MPI
 
-        local_size = a.size if axis is None else a.shape[0]
+        # Get the size (mean = sum/size) -- num elements if axis is None, or num rows along given axis
+        local_size = a.size if axis is None else a.shape[axis]
         global_size = comm.allreduce(local_size, op=MPI.SUM)
 
+        # Warn if dividing by 0
         if global_size == 0:
             warnings.warn("Invalid value encountered in scalar divide (global_size = 0)")
             return np.nan
 
+        # Identify the axis along which the input array is distributed
+        distributed_axis = 0 if a.ndim < 3 else 1
+
+        # Calculate mean of flattened array if no axis is given
         if axis is None:
             local_sum = np.sum(a)
             global_sum = comm.allreduce(local_sum, op=MPI.SUM)
             return global_sum / global_size
 
-        elif axis == 0:
+        # Get mean along distributed axis and perform collective operation
+        elif axis == distributed_axis:
             local_sum = np.sum(a, axis=axis)
             global_sum = np.zeros_like(np.mean(a, axis=axis))
             comm.Allreduce(local_sum, global_sum, op=MPI.SUM)
             return global_sum / global_size
 
+        # Return the local mean if queried axis is not the distributed axis
         else:
             return np.mean(a, dtype=dtype, axis=axis)
 
 # ----------------------------------------------------
-def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, comm=None):
+def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, testing=False, comm=None):
     '''
     Return the standard deviation of a possibly distributed array over a given axis.
 
@@ -621,17 +584,18 @@ def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, comm=Non
         a (np.ndarray): input data
         dtype (data-type): Type to use in computing the mean (default: float64 for int arrays, same type as input for float arrays)
         axis (None or int): the axis along which to compute the mean. If None, computes the mean of the flattened array. (default: None)
-        ddof (int): Delta degrees of freedom used in divisor N - ddof (default: 0)
         comm (MPI_Comm): MPI communicator (default: None)
 
     Returns:
-        if axis==None, returns a scalar
-        if axis is not None, returns an array of dimension a.dim - 1
+        if axis == None, returns a scalar
+        if axis is not None, returns an array of dimension a.ndim - 1
 
     Preconditions:
-      - a is at most a rank-3 tensor and
-      - if a is distributed, it must be so along the 0-th axis,
-        and every rank must have the same a.shape[1] and a.shape[2]
+      - a is at most a rank-3 tensor
+      - if a is a distributed 2-D array, it must be distributed along axis=0,
+        and every rank must have the same a.shape[1]
+      - if a is a distributed 3-D tensor, it must be distributed along axis=1,
+        and every rank must have the same a.shape[0] and a.shape[2]
       - if axis != None, then it must be an int
 
     Postconditions:
@@ -701,44 +665,42 @@ def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, comm=Non
     Example 3:
     **********
 
-                / 3.  6. -7.
-       rank 0  /2.  1.  4.
-               --------------
+       / 3.   4.   /  2.   8.   2.   1.   / 2.
+      /  6.  -1.  /  -2.  -1.   0.  -6.  /  0.    -> slice T(:,:,1)
+     /  -7.   5. /    5.   0.   3.   1. /   3.
+    |-----------|----------------------|--------
+    | 2.   3.   |  4.   5.  -2.   4.   | -4.
+    | 1.   5.   | -2.   4.   8.  -3.   |  8.    ->  slice T(:,:,0)
+    | 4.   3.   | -4.   6.   9.  -4.   |  9.
 
-                / 4.  -1.  5.
-               /3.  5.  3.
-      =======================
-
-       rank 1   / 2.  -2.  5.
-               /4.  -2.  -4.
-               --------------
-
-                / 8.  -1.  0.
-               /5.   4.   6.
-               --------------
-
-                / 2.   0.  3.
-               /-2.   8.   9.
-               --------------
-
-                / 1.  -6.  1.
-               /4.  -3.  -4.
-      =======================
-
-       rank 2   / 2.   0.  3.
-               /-4.  8.   9.
-               --------------
+        r0                r1              r2
 
     Suppose that we do:
 
-       res = pla.std(a, axis=0, comm)
+        res = pla.std(a, axis=0, comm)
 
-    then this is effectively a reduction over the 0-th axis
+    then res is now a rank-2 array as follows:
+
+       /   5.5578   2.6247   /    2.8674   4.0277   1.2472   3.2998   /   1.2472
+      / 1.2472   0.9428     / 3.3993   0.8165   4.9666   3.5590      / 5.9067
+     /                     /                                        /
+    /          r1         /                  r2                    /     r3
+
+    because the axis queried for the standard deviation is NOT a distributed axis
+    and this is effectively a reduction over the 0-th axis
+    so this operation is purely local and the result has the same distribution
+    as the original array.
+
+    Suppose that we do:
+
+      res = pla.std(a, axis=1, comm)
+
+    then this is effectively a reduction over axis=1,
     and every rank will contain the same res which is a rank-2 array as follows
 
-      ([[3.14934396, 2.16653584],
-       [4.14039336, 3.28881841],
-       [5.06287004, 3.84919817]])
+              3.14934396  2.16653584
+              4.14039336  3.28881841
+              5.06287004  3.84919817
 
     this is because the standard deviation is queried for the 0-th axis which is the
     axis along which the data array is distributed.
@@ -748,75 +710,76 @@ def _basic_std_via_python(a: np.ndarray, dtype=None, axis=None, ddof=0, comm=Non
 
     Suppose that we do:
 
-      res = pla.std(a, axis=1, comm)
-
-    then res is now a rank-2 array as follows
-
-       rank 0   1.24721913, 5.55777733
-                0.94280904, 2.62466929
-      ===================================
-       rank 1   3.39934634, 2.86744176
-                0.81649658, 4.02768199
-                4.96655481, 1.24721913
-                3.55902608, 3.29983165
-      ===================================
-       rank 2   5.90668172, 1.24721913
-
-    because the axis queried for the standard deviation is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
-    so this operation is purely local and the result has the same distribution
-    as the original array.
-
-    Suppose that we do:
-
       res = pla.std(a, axis=2, comm)
 
     then res is now a rank-2 array as follows
 
-       rank 0   0.5, 2.5, 5.5
-                0.5, 3. , 1.
-      ===========================
-       rank 1   1. , 0. , 4.5
-                1.5, 2.5, 3.
-                2. , 4. , 3.
-                1.5, 1.5, 2.5
-      ===========================
-       rank 2   3. , 4. , 3.
+           r0      ||          r1           ||  r2
+                   ||                       ||
+         0.5  0.5  ||   1.   1.5  2.  1.5   ||   3.
+         2.5  3.   ||   0.   2.5  4.  1.5   ||   4.
+         5.5  1.   ||   4.5  3.   3.  2.5   ||   3.
+                   ||                       ||
 
     because the axis queried for the standard deviation is NOT a distributed axis
-    and this is effectively a reduction over the 1-th axis
+    and this is effectively a reduction over the 2-th axis
     so this operation is purely local and the result has the same distribution
     as the original array.
     '''
+    # Enforce preconditions
     assert a.ndim <= 3, "a must be at most a rank-3 tensor"
     utils.assert_axis_is_none_or_within_rank(a, axis)
 
+    # Return np.std if running serial
     if comm is None or comm.Get_size() == 1:
-        return np.std(a, dtype=dtype, axis=axis, ddof=ddof)
+        return np.std(a, dtype=dtype, axis=axis)
+
+    # Otherwis, calculate distributed standard deviation
     else:
         import mpi4py
         from mpi4py import MPI
 
-        # Calculate quanities shared among axis=None or axis=0
-        if axis is None or axis == 0:
-            global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
-            local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
-            local_size = a.size if axis is None else a.shape[0]
-            global_size = comm.allreduce(local_size, op=MPI.SUM)
+        # Determine the axis along which the data is distributed
+        distributed_axis = 0 if a.ndim < 3 else 1
 
+        # Calculate standard deviation of flattened array
         if axis is None:
+            global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
+
+            # Compute the sum of the squared differences from the mean
+            local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
+            local_size = a.size
+            global_size = comm.allreduce(local_size, op=MPI.SUM)
             global_sq_diff = comm.allreduce(local_sq_diff, op=MPI.SUM)
-            global_std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
+
+            # Return the standard deviation
+            global_std_dev = np.sqrt(global_sq_diff / (global_size))
             return global_std_dev
 
-        elif axis == 0:
+        # Calculate standard deviation along specified axis
+        elif axis == distributed_axis:
+            global_mean = _basic_mean_via_python(a, dtype=dtype, axis=axis, comm=comm)
+
+            # Compute the sum of the squared differences from the mean
+            if distributed_axis == 0:
+                local_sq_diff = np.sum(np.square(a - global_mean), axis=axis)
+            else:
+                # Must specify how to broadcast the global_mean to match dimensions of a
+                local_sq_diff = np.sum(np.square(a - global_mean[:,np.newaxis,:]), axis=axis)
+
+            # Get global squared differences
+            local_size = a.shape[axis]
+            global_size = comm.allreduce(local_size, op=MPI.SUM)
             global_sq_diff = np.zeros_like(local_sq_diff)
             comm.Allreduce(local_sq_diff, global_sq_diff, op=MPI.SUM)
-            global_std_dev = np.sqrt(global_sq_diff / (global_size - ddof))
+
+            # Return the standard deviation
+            global_std_dev = np.sqrt(global_sq_diff / (global_size))
             return global_std_dev
 
+        # Return the local standard deviation if queried axis is not the distributed axis
         else:
-            return np.std(a, dtype=dtype, axis=axis, ddof=ddof)
+            return np.std(a, dtype=dtype, axis=axis)
 
 # ----------------------------------------------------
 def _basic_product_via_python(flagA, flagB, alpha, A, B, beta, C, comm=None):
