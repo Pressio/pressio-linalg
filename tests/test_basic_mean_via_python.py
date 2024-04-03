@@ -54,19 +54,18 @@ def test_python_mean_examples_mpi():
 
     # Example 3
     local_arr_3, global_arr_3 = test_utils.generate_local_and_global_arrays_from_example_impl(rank, slices, example=3)
-
     res_ex3_ax0 = _basic_mean_via_python(local_arr_3, axis=0, comm=comm)
-    exp_ex3_ax0 = np.mean(global_arr_3, axis=0)
+    full_ex3_ax0_mean = np.mean(global_arr_3, axis=0)
+    exp_ex3_ax0 = full_ex3_ax0_mean[slices[rank][0]:slices[rank][1],:]
     assert np.allclose(res_ex3_ax0, exp_ex3_ax0)
 
     res_ex3_ax1 = _basic_mean_via_python(local_arr_3, axis=1, comm=comm)
-    full_ex3_ax1_mean = np.mean(global_arr_3, axis=1)
-    exp_ex3_ax1 = full_ex3_ax1_mean[slices[rank][0]:slices[rank][1],:]
+    exp_ex3_ax1 = np.mean(global_arr_3, axis=1)
     assert np.allclose(res_ex3_ax1, exp_ex3_ax1)
 
     res_ex3_ax2 = _basic_mean_via_python(local_arr_3, axis=2, comm=comm)
     full_ex3_ax2_mean = np.mean(global_arr_3, axis=2)
-    exp_ex3_ax2 = full_ex3_ax2_mean[slices[rank][0]:slices[rank][1],:]
+    exp_ex3_ax2 = full_ex3_ax2_mean[:,slices[rank][0]:slices[rank][1]]
     assert np.allclose(res_ex3_ax2, exp_ex3_ax2)
 
 @pytest.mark.mpi(min_size=3)
@@ -101,8 +100,17 @@ def test_python_mean_array_axis_mpi():
     result_01, expected_01 = _mean_setup(ndim=2, axis=0, comm=comm)
     assert np.allclose(result_01, expected_01)
 
-    result_02, expected_02 = _mean_setup(ndim=3, axis=1, comm=comm)
+    result_02, expected_02 = _mean_setup(ndim=2, axis=1, comm=comm)
     assert len(np.setdiff1d(result_02, expected_02)) == 0
+
+@pytest.mark.mpi(min_size=3)
+def test_python_mean_tensor_axis_mpi():
+    comm = MPI.COMM_WORLD
+    result_01, expected_01 = _mean_setup(ndim=3, axis=0, comm=comm)
+    assert len(np.setdiff1d(result_01, expected_01)) == 0
+
+    result_02, expected_02 = _mean_setup(ndim=3, axis=1, comm=comm)
+    assert np.allclose(result_02, expected_02)
 
     result_03, expected_03 = _mean_setup(ndim=3, axis=2, comm=comm)
     assert len(np.setdiff1d(result_03, expected_03)) == 0
@@ -121,4 +129,5 @@ if __name__ == "__main__":
     test_python_mean_vector_mpi()
     test_python_mean_array_mpi()
     test_python_mean_array_axis_mpi()
+    test_python_mean_tensor_axis_mpi()
     test_python_mean_serial()
